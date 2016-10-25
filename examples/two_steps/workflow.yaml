@@ -39,3 +39,5 @@ spec:
               - name: step-two-wait-and-exit
                 image: gcr.io/google_containers/busybox
                 command: ["sh", "-c", "echo Starting on: $(date); sleep 5; echo Goodbye cruel world at: $(date)"]
+    dependencies:
+      - one

@@ -24,13 +24,11 @@ import (
 	"k8s.io/kubernetes/pkg/apis/batch"
 	kcache "k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/runtime"
 
 	"github.com/golang/glog"
 	"github.com/sdminonne/workflow-controller/pkg/api"
 
 	wapi "github.com/sdminonne/workflow-controller/pkg/api"
-	wcodec "github.com/sdminonne/workflow-controller/pkg/api/codec"
 )
 
 // StoreToWorkflowLister adds Exists and List method to cache.Store
@@ -50,14 +48,9 @@ func (s *StoreToWorkflowLister) Exists(workflow *api.Workflow) (bool, error) {
 // List lists all stored Workflows.
 func (s *StoreToWorkflowLister) List() (workflows api.WorkflowList, err error) {
 	for i := range s.Store.List() {
-		obj, ok := s.Store.List()[i].(*runtime.Unstructured)
+		w, ok := s.Store.List()[i].(*wapi.Workflow)
 		if !ok {
-			glog.Errorf("Expected Workflow type. Unexpected object of type: %v %#v", reflect.TypeOf(obj), obj)
-			continue
-		}
-		w, err := wcodec.UnstructuredToWorkflow(obj)
-		if err != nil {
-			glog.Errorf("Unable to encode listed object: %v", err)
+			glog.Errorf("Expected Workflow type. Unexpected object of type: %v %#v", reflect.TypeOf(w), w)
 			continue
 		}
 		workflows.Items = append(workflows.Items, *w)

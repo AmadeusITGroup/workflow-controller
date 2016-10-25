@@ -38,7 +38,6 @@ import (
 	"k8s.io/kubernetes/pkg/watch"
 
 	wapi "github.com/sdminonne/workflow-controller/pkg/api"
-	wcodec "github.com/sdminonne/workflow-controller/pkg/api/codec"
 	wapivalidation "github.com/sdminonne/workflow-controller/pkg/api/validation"
 	wclient "github.com/sdminonne/workflow-controller/pkg/client"
 )
@@ -62,7 +61,7 @@ type Controller struct {
 	jobControl JobControlInterface
 
 	// To allow injection of updateWorkflowStatus for testing.
-	updateHandler func(workflow *runtime.Unstructured) error
+	updateHandler func(workflow *wapi.Workflow) error
 	syncHandler   func(workflowKey string) error
 	// jobStoreSynced returns true if the jod store has been synced at least once.
 	// Added as a member to the struct to allow injection for testing.
@@ -152,25 +151,22 @@ func NewController(kubeClient clientset.Interface, wfClient wclient.Interface, r
 				return wc.wfClient.Workflows(api.NamespaceAll).Watch(options)
 			},
 		},
-		&runtime.Unstructured{},
+		&wapi.Workflow{},
 		resyncPeriod(),
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(cur interface{}) {
-				unstruct, ok := cur.(*runtime.Unstructured)
+				w, ok := cur.(*wapi.Workflow)
 				if !ok {
-					glog.Errorf("not a runtime unstrctured object")
-					return
-				}
-				if unstruct.GetKind() != "Workflow" {
+					glog.Errorf("not workflow: %t", cur)
 					return
 				}
 
 				removeInvalidWorkflow := true // TODO: @sdminonne it should be configurable
-				if err := wc.defaultAndValidateWorkflow(unstruct, removeInvalidWorkflow); err != nil {
+				if err := wc.defaultAndValidateWorkflow(w, removeInvalidWorkflow); err != nil {
 					glog.Errorf("Unable to default and validate workflow: %v", err)
 					return
 				}
-				wc.enqueueController(unstruct)
+				wc.enqueueController(w)
 			},
 			UpdateFunc: func(old, cur interface{}) {
 				wc.enqueueController(cur)
@@ -183,12 +179,7 @@ func NewController(kubeClient clientset.Interface, wfClient wclient.Interface, r
 	return wc
 }
 
-func (w *Controller) defaultAndValidateWorkflow(unstruct *runtime.Unstructured, removeInvalidWorkflow bool) error {
-	workflow, err := wcodec.UnstructuredToWorkflow(unstruct)
-	if err != nil {
-		return fmt.Errorf("couldn't trnslate runtime.Unstructured to Workflow: %v", err)
-	}
-
+func (w *Controller) defaultAndValidateWorkflow(workflow *wapi.Workflow, removeInvalidWorkflow bool) error {
 	defaultedWorkflow, err := wapi.NewBasicDefaulter().Default(workflow)
 	if err != nil {
 		return fmt.Errorf("couldn't default Workflow %q: %v", workflow.Name, err)
@@ -207,8 +198,7 @@ func (w *Controller) defaultAndValidateWorkflow(unstruct *runtime.Unstructured, 
 		// TODO: annotate invalid workflow if not removed: user may want to patch it and feedback may come from annotation
 		return validationErrors
 	}
-	defaultedUnstructured, err := wcodec.WorkflowToUnstructured(defaultedWorkflow, w.GetGroupVersionKind())
-	if _, err = w.wfClient.Workflows(workflow.GetNamespace()).Update(defaultedUnstructured); err != nil {
+	if _, err = w.wfClient.Workflows(workflow.GetNamespace()).Update(defaultedWorkflow); err != nil {
 		return fmt.Errorf("unable to default workflow %q: %v", workflow.Name, err)
 	}
 	glog.Infof("Worklow %q defaulted", workflow.Name)
@@ -295,15 +285,13 @@ func (w *Controller) syncWorkflow(key string) error {
 		return err
 	}
 
-	unstruct := obj.(*runtime.Unstructured)
-	unstructKey, err := controller.KeyFunc(unstruct)
+	workflow, ok := obj.(*wapi.Workflow)
+	if !ok {
+		glog.Errorf("Couldn't obtain workflow from %t", obj)
+	}
+	workflowKey, err := controller.KeyFunc(workflow)
 	if err != nil {
 		glog.Errorf("Couldn't get key for workflow: %v", err)
-		return err
-	}
-	workflow, err := wcodec.UnstructuredToWorkflow(unstruct)
-	if err != nil {
-		glog.Errorf("Couldn't  decode Workflow")
 		return err
 	}
 
@@ -314,7 +302,7 @@ func (w *Controller) syncWorkflow(key string) error {
 		glog.V(4).Infof("Workflow.Status.Statuses initialized for %q", workflow.Name)
 	}
 
-	workflowNeedsSync := w.expectations.SatisfiedExpectations(unstructKey)
+	workflowNeedsSync := w.expectations.SatisfiedExpectations(workflowKey)
 	if !workflowNeedsSync {
 		glog.V(4).Infof("Workflow %v doesn't need synch", workflow.Name)
 		return nil
@@ -338,23 +326,17 @@ func (w *Controller) syncWorkflow(key string) error {
 		workflow.Status.Conditions = append(workflow.Status.Conditions, condition)
 		workflow.Status.CompletionTime = &now
 		w.recorder.Event(workflow, api.EventTypeNormal, "DeadlineExceeded", "Workflow was active longer than specified deadline")
-		if err := w.updateHandler(unstruct); err != nil {
+		if err := w.updateHandler(workflow); err != nil {
 			glog.Errorf("Failed to update workflow %v, requeuing.  Error: %v", workflow.Name, err)
-			w.enqueueController(&unstruct)
+			w.enqueueController(workflow)
 		}
 		return nil
 	}
 
 	if w.manageWorkflow(workflow) {
-		u, err := wcodec.WorkflowToUnstructured(workflow, w.GetGroupVersionKind())
-		if err != nil {
-			glog.Errorf("Failed to convert workflow to unstructured.Runtime: %v", err)
-			w.enqueueController(&unstruct)
-			return nil
-		}
-		if err = w.updateHandler(u); err != nil {
+		if err = w.updateHandler(workflow); err != nil {
 			glog.Errorf("Failed to update workflow %v, requeuing.  Error: %v", workflow.Name, err)
-			w.enqueueController(u)
+			w.enqueueController(workflow)
 			return nil
 		}
 		glog.Infof("Workflow %q status updated", workflow.Name)
@@ -374,7 +356,7 @@ func pastActiveDeadline(workflow *wapi.Workflow) bool {
 	return duration >= allowedDuration
 }
 
-func (w *Controller) updateWorkflowStatus(workflow *runtime.Unstructured) error {
+func (w *Controller) updateWorkflowStatus(workflow *wapi.Workflow) error {
 	// todo @sdminonne: client to support UpdateStatus ??
 	_, err := w.wfClient.Workflows(workflow.GetNamespace()).Update(workflow)
 	return err

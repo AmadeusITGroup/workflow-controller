@@ -27,10 +27,8 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"k8s.io/kubernetes/pkg/controller"
-	"k8s.io/kubernetes/pkg/runtime"
 
 	wapi "github.com/sdminonne/workflow-controller/pkg/api"
-	wcodec "github.com/sdminonne/workflow-controller/pkg/api/codec"
 	wclient "github.com/sdminonne/workflow-controller/pkg/client"
 )
 
@@ -415,23 +413,17 @@ func TestControllerSyncWorkflow(t *testing.T) {
 		fakeJobControl := FakeJobControl{}
 		controller.jobControl = &fakeJobControl
 		controller.jobStoreSynced = alwaysReady
-		var actual *runtime.Unstructured
-		controller.updateHandler = func(workflow *runtime.Unstructured) error {
+		var actual *wapi.Workflow
+		controller.updateHandler = func(workflow *wapi.Workflow) error {
 			actual = workflow
 			return nil
 		}
 		// setup workflow, jobs
-		u, err := wcodec.WorkflowToUnstructured(tc.workflow, controller.GetGroupVersionKind())
-		if err != nil {
-			t.Errorf("%s - unable to convert workflow to unstructured runtime: %v", name, err)
-			continue
-		}
-		controller.workflowStore.Store.Add(u)
+		controller.workflowStore.Store.Add(tc.workflow)
 		for _, job := range tc.jobs {
 			controller.jobStore.Store.Add(&job)
 		}
-		err = controller.syncWorkflow(getKey(tc.workflow, t))
-		if err != nil {
+		if err := controller.syncWorkflow(getKey(tc.workflow, t)); err != nil {
 			t.Errorf("%s: unexpected error syncing workflow %v", name, err)
 			continue
 		}
@@ -441,11 +433,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 
 		}
 		if tc.checkWorkflow != nil {
-			workflow, err := wcodec.UnstructuredToWorkflow(actual)
-			if err != nil {
-				t.Errorf("unable to convert unstructured object to workflow: %v", err)
-			}
-			tc.checkWorkflow(name, workflow, t)
+			tc.checkWorkflow(name, actual, t)
 		}
 	}
 }
@@ -529,25 +517,19 @@ func TestSyncWorkflowPastDeadline(t *testing.T) {
 		manager.jobControl = &fakeJobControl
 		manager.jobStoreSynced = alwaysReady
 
-		var actual *runtime.Unstructured
-		manager.updateHandler = func(workflow *runtime.Unstructured) error {
+		var actual *wapi.Workflow
+		manager.updateHandler = func(workflow *wapi.Workflow) error {
 			actual = workflow
 			return nil
 		}
 		startTime := unversioned.Unix(unversioned.Now().Time.Unix()-tc.startTime, 0)
 		tc.workflow.Status.StartTime = &startTime
 		tc.workflow.Spec.ActiveDeadlineSeconds = &tc.activeDeadlineSeconds
-		u, err := wcodec.WorkflowToUnstructured(tc.workflow, manager.GetGroupVersionKind())
-		if err != nil {
-			t.Errorf("%s - unable to convert workflow to unstructured runtime: %v", name, err)
-			continue
-		}
-		manager.workflowStore.Store.Add(u)
+		manager.workflowStore.Store.Add(tc.workflow)
 		for _, job := range tc.jobs {
 			manager.jobStore.Store.Add(&job)
 		}
-		err = manager.syncWorkflow(getKey(tc.workflow, t))
-		if err != nil {
+		if err := manager.syncWorkflow(getKey(tc.workflow, t)); err != nil {
 			t.Errorf("%s: unexpected error syncing workflow %v", name, err)
 			continue
 		}
@@ -584,20 +566,20 @@ func TestWatchWorkflows(t *testing.T) {
 	fakeJobControl := FakeJobControl{}
 	manager.jobControl = &fakeJobControl
 	manager.jobStoreSynced = alwaysReady
-	var actual *runtime.Unstructured
-	manager.updateHandler = func(workflow *runtime.Unstructured) error {
+	var actual *wapi.Workflow
+	manager.updateHandler = func(workflow *wapi.Workflow) error {
 		actual = workflow
 		return nil
 	}
 
-	var u runtime.Unstructured
+	var u wapi.Workflow
 	received := make(chan struct{})
 	manager.syncHandler = func(key string) error {
 		obj, exists, err := manager.workflowStore.GetByKey(key)
 		if !exists || err != nil {
 			t.Errorf("Expected to find workflow under key: %v", key)
 		}
-		unstruct, ok := obj.(*runtime.Unstructured)
+		unstruct, ok := obj.(*wapi.Workflow)
 		if !ok {
 			t.Fatalf("unexpected type: %v %#v", reflect.TypeOf(obj), obj)
 		}

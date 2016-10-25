@@ -202,13 +202,10 @@ func TestUpdateWorkflow(t *testing.T) {
 	}
 	c := NewForConfigOrDie(workflowResource, config)
 
-	u, err := c.Workflows(ns).Get("mydag")
+	workflow, err := c.Workflows(ns).Get("mydag")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	workflow, _ := wcodec.UnstructuredToWorkflow(u)
-
 	if workflow == nil {
 		t.Errorf("Unexpected error coulnd't GET workflow")
 	}
@@ -217,21 +214,14 @@ func TestUpdateWorkflow(t *testing.T) {
 	if len(workflow.Spec.Steps) != expectedNumberOfSteps {
 		t.Errorf("Bad number of steps expetectd %d got %d", expectedNumberOfSteps, len(workflow.Spec.Steps))
 	}
-	gvk := &unversioned.GroupVersionKind{
-		Group:   "example.com",
-		Version: "v1",
-		Kind:    "Workflow",
-	}
+
 	workflow.Spec.Steps = append(workflow.Spec.Steps, wapi.WorkflowStep{Name: "three"})
 	expectedNumberOfSteps++
 
-	updatedUnstructured, _ := wcodec.WorkflowToUnstructured(workflow, gvk)
-
-	newUnstructured, err := c.Workflows(ns).Update(updatedUnstructured)
+	newWorkflow, err := c.Workflows(ns).Update(workflow)
 	if err != nil {
 		t.Errorf("Unexpected error. Couldn't UPDATE workflow: %v", err)
 	}
-	newWorkflow, _ := wcodec.UnstructuredToWorkflow(newUnstructured)
 	if len(newWorkflow.Spec.Steps) != expectedNumberOfSteps {
 		t.Errorf("Bad number of steps expected %d got %d", expectedNumberOfSteps, len(newWorkflow.Spec.Steps))
 	}
