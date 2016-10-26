@@ -208,6 +208,7 @@ func (w *Controller) defaultAndValidateWorkflow(workflow *wapi.Workflow, removeI
 // Run runs main goroutine responsible for watching and syncing workflows.
 func (w *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
+	defer w.queue.ShutDown()
 
 	go w.jobController.Run(stopCh)
 	go w.workflowController.Run(stopCh)
@@ -217,9 +218,7 @@ func (w *Controller) Run(workers int, stopCh <-chan struct{}) {
 	}
 
 	<-stopCh
-	glog.Infof("fShutting down Workflow Controller")
-	w.queue.ShutDown()
-
+	glog.Infof("Shutting down Workflow Controller")
 }
 
 // getJobWorkflow return the workflow managing the given job

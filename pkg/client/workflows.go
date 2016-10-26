@@ -235,7 +235,7 @@ func (w *workflows) Watch(options api.ListOptions) (watch.Interface, error) {
 		glog.V(6).Infof("Got event... %s", event.Type)
 		if event.Type == watch.Error {
 			glog.Errorf("watcher error: %v", apierrs.FromObject(event.Object))
-			return // maybe we want exit... here
+			return
 		}
 		u, ok := event.Object.(*runtime.Unstructured)
 		if !ok {
@@ -258,55 +258,3 @@ func (w *workflows) Watch(options api.ListOptions) (watch.Interface, error) {
 	}, 25*time.Millisecond, wait.NeverStop)
 	return watcher, nil
 }
-
-/*
-	go func() {
-		optionsV1 := v1.ListOptions{}
-		v1.Convert_api_ListOptions_To_v1_ListOptions(&options, &optionsV1, nil)
-		for {
-			unstructuredWatcher, err := w.c.Resource(w.resource, w.ns).Watch(optionsAPIv1)
-			if err != nil {
-				glog.Errorf("unable to watch workflow: %v", err)
-				continue
-			}
-			event, ok := <-unstructuredWatcher.ResultChan()
-			if !ok {
-				glog.Errorf("Watching workflows: channel closed")
-				continue
-			}
-			glog.V(4).Infof("Got event... %s", event.Type)
-			if event.Type == watch.Error {
-				continue
-			}
-			data, err := runtime.Encode(runtime.UnstructuredJSONScheme, event.Object)
-			if err != nil {
-				glog.Errorf("unable to encode runtime.UnststrucutredJSONScheme %v", err)
-				continue
-			}
-			workflow := &wapi.Workflow{}
-			if err := json.Unmarshal(data, workflow); err != nil {
-				glog.Errorf("unable to unmarshal to Workflow: %v", err)
-				continue
-			}
-
-			optionsAPIv1.ResourceVersion = workflow.ResourceVersion
-
-			watcher.Result <- watch.Event{
-				Type:   event.Type,
-				Object: workflow,
-			}
-			glog.V(6).Infof("Queued event in Workflow watcher...: %s", event.Type)
-		}
-	}()
-	return watcher, nil
-}
-
-func (r *Reflector) Run() {
-    glog.V(3).Infof("Starting reflector %v (%s) from %s", r.expectedType, r.resyncPeriod, r.name)
-    go wait.Until(func() {
-        if err := r.ListAndWatch(wait.NeverStop); err != nil {
-            utilruntime.HandleError(err)
-        }
-    }, r.period, wait.NeverStop)
-}
-*/

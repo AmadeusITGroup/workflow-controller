@@ -22,10 +22,8 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	kcache "k8s.io/kubernetes/pkg/client/cache"
-	//"k8s.io/kubernetes/pkg/util/sets"
 
 	wapi "github.com/sdminonne/workflow-controller/pkg/api"
-	wcodec "github.com/sdminonne/workflow-controller/pkg/api/codec"
 	wapitesting "github.com/sdminonne/workflow-controller/pkg/api/testing"
 )
 
@@ -33,19 +31,10 @@ func TestStoreToWorkflowLister(t *testing.T) {
 	store := kcache.NewStore(kcache.MetaNamespaceKeyFunc)
 	group := "example.com"
 	version := "v1"
-	gvk := &unversioned.GroupVersionKind{
-		Group:   group,
-		Version: version,
-		Kind:    "Workflow",
-	}
 	ids := []string{"foo", "bar", "baz"}
 	for _, id := range ids {
 		w := wapitesting.NewWorkflow(group, version, id, api.NamespaceDefault, nil)
-		u, err := wcodec.WorkflowToUnstructured(w, gvk)
-		if err != nil {
-			t.Fatalf("unable to convert workflow to runtime.Unstructured")
-		}
-		store.Add(u)
+		store.Add(w)
 	}
 
 	swl := StoreToWorkflowLister{store}
@@ -113,23 +102,13 @@ func TestGetJobWorkflows(t *testing.T) {
 
 	group := "example.com"
 	version := "v1"
-	gvk := &unversioned.GroupVersionKind{
-		Group:   group,
-		Version: version,
-		Kind:    "Workflow",
-	}
 
 	for name, tc := range testcases {
 		store := kcache.NewStore(kcache.MetaNamespaceKeyFunc)
 		w := wapitesting.NewWorkflow(group, version, tc.WorkflowName, tc.Namespace, tc.Selector)
-		u, err := wcodec.WorkflowToUnstructured(w, gvk)
-		if err != nil {
-			t.Fatalf("unable to convert workflow to runtime.Unstructured")
-		}
-
-		store.Add(u)
-		swl := StoreToWorkflowLister{store}
-		workflows, err := swl.GetJobWorkflows(job)
+		store.Add(w)
+		sw := StoreToWorkflowLister{store}
+		workflows, err := sw.GetJobWorkflows(job)
 		if err != nil {
 			t.Errorf("%s - unexpected error: %v", name, err)
 		}
