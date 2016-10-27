@@ -30,7 +30,6 @@ import (
 	"k8s.io/kubernetes/pkg/client/record"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/registry/thirdpartyresourcedata"
 	"k8s.io/kubernetes/pkg/runtime"
 	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
 	"k8s.io/kubernetes/pkg/util/wait"
@@ -47,9 +46,6 @@ const WorkflowStepLabelKey = "kubernetes.io/workflow"
 
 // Controller is a useless struct I created just as a placeholder
 type Controller struct {
-
-	// resource contains the ThirdPartyResource handled by the controller
-	resource *extensions.ThirdPartyResource
 
 	// kubeClient  is needed to retrieve kubernetes Objects
 	kubeClient clientset.Interface
@@ -88,20 +84,6 @@ type Controller struct {
 	recorder record.EventRecorder
 }
 
-// GetGroupVersionKind returns GroupVersionKind for the thirdpartyresourcedata to be handled
-func (w *Controller) GetGroupVersionKind() *unversioned.GroupVersionKind {
-	kind, group, err := thirdpartyresourcedata.ExtractApiGroupAndKind(w.resource)
-	if err != nil {
-		glog.Errorf("cannot extract API Group and Kind: %v", err)
-		return nil
-	}
-	return &unversioned.GroupVersionKind{
-		Group:   group,
-		Version: w.resource.Versions[0].Name,
-		Kind:    kind,
-	}
-}
-
 // NewController creates and doesn't initialize the workflow controller
 func NewController(kubeClient clientset.Interface, wfClient wclient.Interface, resource *extensions.ThirdPartyResource, resyncPeriod controller.ResyncPeriodFunc) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
@@ -110,7 +92,6 @@ func NewController(kubeClient clientset.Interface, wfClient wclient.Interface, r
 	eventBroadcaster.StartRecordingToSink(&unversionedcore.EventSinkImpl{Interface: kubeClient.Core().Events("")})
 
 	wc := &Controller{
-		resource:   resource,
 		kubeClient: kubeClient,
 		wfClient:   wfClient,
 		jobControl: WorkflowJobControl{
