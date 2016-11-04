@@ -53,8 +53,8 @@ type Interface WorkflowsNamespacer
 
 // WorkflowInterface exposes methods to work on Workflow resources.
 type WorkflowInterface interface {
+	Create(*wapi.Workflow) (*wapi.Workflow, error)
 	List(options api.ListOptions) (*wapi.WorkflowList, error)
-
 	Get(name string) (*wapi.Workflow, error)
 	Update(workflow *wapi.Workflow) (*wapi.Workflow, error)
 	Delete(name string, options *api.DeleteOptions) error
@@ -122,6 +122,28 @@ func newWorkflows(c Client, ns string) *workflows {
 // Ensure statically that workflows implements WorkflowInterface.
 var _ WorkflowInterface = &workflows{}
 
+// Create creates a Workflow
+func (w *workflows) Create(workflow *wapi.Workflow) (*wapi.Workflow, error) {
+	gvk := &unversioned.GroupVersionKind{
+		Group:   "example.com",
+		Version: "v1",
+		Kind:    "Workflow",
+	}
+	unstruct, err := wcodec.WorkflowToUnstructured(workflow, gvk)
+	if err != nil {
+		return nil, fmt.Errorf("cannot encode workflow %q: %v", workflow.Name, err)
+	}
+	createdUnstruct, err := w.c.Resource(w.resource, w.ns).Create(unstruct)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create workflow %q: %v", workflow.Name, err)
+	}
+	createdWorkflow, err := wcodec.UnstructuredToWorkflow(createdUnstruct)
+	if err != nil {
+		return nil, fmt.Errorf("cannot decode workflow %q: %v", workflow.Name, err)
+	}
+	return createdWorkflow, nil
+}
+
 // List returns a list of workflows that match the label and field selectors.
 func (w *workflows) List(options api.ListOptions) (*wapi.WorkflowList, error) {
 	v1Options := v1.ListOptions{}
@@ -174,7 +196,7 @@ func (w *workflows) Update(workflow *wapi.Workflow) (*wapi.Workflow, error) {
 	}
 	updatedUnstruct, err := w.c.Resource(w.resource, w.ns).Update(unstruct)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get workflow %q: %v", workflow.Name, err)
+		return nil, fmt.Errorf("cannot update workflow %q: %v", workflow.Name, err)
 	}
 	updatedWorkflow, err := wcodec.UnstructuredToWorkflow(updatedUnstruct)
 	if err != nil {
@@ -212,6 +234,26 @@ func RegisterWorkflow(kubeClient clientset.Interface, resource, domain string, v
 	}
 	_, err := kubeClient.Extensions().ThirdPartyResources().Create(thirdPartyResource)
 	return thirdPartyResource, err
+}
+
+// IsWorkflowRegistered returns wheter or not the Workflow with specific group, name and version is registered
+func IsWorkflowRegistered(kubeClient clientset.Interface, resource, domain string, version string) (bool, error) {
+	resourceName := strings.Join([]string{resource, domain}, ".")
+	r, err := kubeClient.Extensions().ThirdPartyResources().Get(resourceName)
+	if err != nil {
+		return false, fmt.Errorf("unable to get resource %q: %v", resourceName, err)
+	}
+	if r == nil {
+		return false, fmt.Errorf("unable to find resource %q", resourceName)
+	}
+	availableVersions := []string{}
+	for i := range r.Versions {
+		availableVersions = append(availableVersions, r.Versions[i].Name)
+		if r.Versions[i].Name == version {
+			return true, nil
+		}
+	}
+	return false, fmt.Errorf("resource %q found. Bad version %q, available versions: %s", resourceName, version, availableVersions)
 }
 
 // Watch returns a watch.Interface that watches the requested workflows.

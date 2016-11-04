@@ -40,10 +40,9 @@ type WorkflowController struct {
 
 // NewWorkflowController  initializes and returns a ready to run WorkflowController
 func NewWorkflowController(c *Config) *WorkflowController {
-
 	kubeconfig, err := clientcmd.BuildConfigFromFlags(c.KubeMasterURL, c.KubeConfigFile)
 	if err != nil {
-		glog.Fatalf("Unable to start workflow controller %v", err)
+		glog.Fatalf("Unable to start workflow controller: %v", err)
 	}
 
 	kubeClient := clientset.NewForConfigOrDie(restclient.AddUserAgent(kubeconfig, "workflow-controller"))
