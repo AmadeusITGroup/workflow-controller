@@ -41,6 +41,9 @@ import (
 
 	wapi "github.com/sdminonne/workflow-controller/pkg/api"
 	wcodec "github.com/sdminonne/workflow-controller/pkg/api/codec"
+	//"github.com/sdminonne/workflow-controller/vendor/k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/rbac/unversioned"
+	//"github.com/sdminonne/workflow-controller/vendor/k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/storage/unversioned"
+	//"github.com/sdminonne/workflow-controller/vendor/k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/unversioned"
 )
 
 // WorkflowsNamespacer has methods to work with Workflow resources in a namespace
@@ -65,8 +68,9 @@ type WorkflowInterface interface {
 // Client implements a workflow client
 type Client struct {
 	*dynamic.Client
-	tmpRestClient *restclient.RESTClient // TODO: remove it only needed for DELETE
-	restResource  string
+	tmpRestClient    *restclient.RESTClient // TODO: remove it only needed for DELETE
+	restResource     string
+	groupVersionKind *unversioned.GroupVersionKind
 }
 
 // Workflows returns a Workflows
@@ -80,11 +84,8 @@ func NewForConfigOrDie(resource *extensions.ThirdPartyResource, config *restclie
 	if err != nil {
 		panic(err)
 	}
-	plural, _ := meta.KindToResource(unversioned.GroupVersionKind{
-		Group:   group,
-		Version: resource.Versions[0].Name,
-		Kind:    kind,
-	})
+	gkv := unversioned.GroupVersionKind{Group: group, Version: resource.Versions[0].Name, Kind: kind}
+	plural, _ := meta.KindToResource(gkv)
 	config.GroupVersion = &unversioned.GroupVersion{
 		Group:   group,
 		Version: resource.Versions[0].Name,
@@ -104,19 +105,25 @@ func NewForConfigOrDie(resource *extensions.ThirdPartyResource, config *restclie
 		panic(err)
 	}
 
-	return Client{dynamicClient, tmpRestClient, plural.Resource}
+	return Client{dynamicClient, tmpRestClient, plural.Resource, &gkv}
 }
 
 // workflows implements WorkflowsNamespacer interface
 type workflows struct {
 	c        Client
 	ns       string
+	gvk      *unversioned.GroupVersionKind
 	resource *unversioned.APIResource
 }
 
 // newWorkflows returns a workflows
 func newWorkflows(c Client, ns string) *workflows {
-	return &workflows{c: c, ns: ns, resource: &unversioned.APIResource{Name: c.restResource, Namespaced: len(ns) != 0}}
+	return &workflows{
+		c:        c,
+		ns:       ns,
+		gvk:      c.groupVersionKind,
+		resource: &unversioned.APIResource{Name: c.restResource, Namespaced: len(ns) != 0},
+	}
 }
 
 // Ensure statically that workflows implements WorkflowInterface.
@@ -124,12 +131,7 @@ var _ WorkflowInterface = &workflows{}
 
 // Create creates a Workflow
 func (w *workflows) Create(workflow *wapi.Workflow) (*wapi.Workflow, error) {
-	gvk := &unversioned.GroupVersionKind{
-		Group:   "example.com",
-		Version: "v1",
-		Kind:    "Workflow",
-	}
-	unstruct, err := wcodec.WorkflowToUnstructured(workflow, gvk)
+	unstruct, err := wcodec.WorkflowToUnstructured(workflow, w.gvk)
 	if err != nil {
 		return nil, fmt.Errorf("cannot encode workflow %q: %v", workflow.Name, err)
 	}
@@ -185,12 +187,7 @@ func (w *workflows) Get(name string) (*wapi.Workflow, error) {
 
 // Update updates an existing workflow. TODO: implement via PATCH
 func (w *workflows) Update(workflow *wapi.Workflow) (*wapi.Workflow, error) {
-	gvk := &unversioned.GroupVersionKind{
-		Group:   "example.com",
-		Version: "v1",
-		Kind:    "Workflow",
-	}
-	unstruct, err := wcodec.WorkflowToUnstructured(workflow, gvk)
+	unstruct, err := wcodec.WorkflowToUnstructured(workflow, w.gvk)
 	if err != nil {
 		return nil, fmt.Errorf("cannot encode workflow %q: %v", workflow.Name, err)
 	}

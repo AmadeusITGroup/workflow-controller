@@ -65,8 +65,8 @@ func TestListWorkflows(t *testing.T) {
 		if r.Method != "GET" {
 			t.Errorf("Expected GET got '%s'\n", r.Method)
 		}
-		if r.RequestURI != "/apis/example.com/v1/workflows" {
-			t.Errorf("Expected /apis/example.com/v1/workflows got %s\n", r.RequestURI)
+		if r.RequestURI != "/apis/acme.org/v1/workflows" {
+			t.Errorf("Expected /apis/acme.org/v1/workflows got %s\n", r.RequestURI)
 		}
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -81,7 +81,7 @@ func TestListWorkflows(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	domain := "example.com"
+	domain := "acme.org"
 	resource := "workflow"
 	versions := []string{"v1", "v2"}
 	fakeClient := fake.NewSimpleClientset()
