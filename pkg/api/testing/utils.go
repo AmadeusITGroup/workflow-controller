@@ -31,8 +31,8 @@ func DumpWorkflowInTmpFile(w *wapi.Workflow) (string, error) {
 	return tmpfile.Name(), nil
 }
 
-// utility function to create a JobTemplateSpec
-func newJobTemplateSpec() *batch.JobTemplateSpec {
+// NewJobTemplatespec is an utility function to create a JobTemplateSpec
+func NewJobTemplateSpec() *batch.JobTemplateSpec {
 	return &batch.JobTemplateSpec{
 		ObjectMeta: api.ObjectMeta{
 			Labels: map[string]string{
@@ -91,11 +91,11 @@ func NewWorkflow(group, version, name, namespace string, labelSelector map[strin
 			Steps: []wapi.WorkflowStep{
 				{
 					Name:        "one",
-					JobTemplate: newJobTemplateSpec(),
+					JobTemplate: NewJobTemplateSpec(),
 				},
 				{
 					Name:        "two",
-					JobTemplate: newJobTemplateSpec(),
+					JobTemplate: NewJobTemplateSpec(),
 				},
 			},
 			Selector: &unversioned.LabelSelector{

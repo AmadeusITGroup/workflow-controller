@@ -61,7 +61,7 @@ func (s *StoreToWorkflowLister) List() (workflows api.WorkflowList, err error) {
 // GetJobWorkflows return the Workflows which may control the job
 func (s *StoreToWorkflowLister) GetJobWorkflows(job *batch.Job) (workflows []wapi.Workflow, err error) {
 	if len(job.Labels) == 0 {
-		err = fmt.Errorf("no workflows found for job %v because it has no labels", job.Name)
+		err = fmt.Errorf("no workflows found for job. Job %v has no labels", job.Name)
 		return
 	}
 	workflowList, err := s.List()

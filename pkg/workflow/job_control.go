@@ -27,10 +27,8 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/apis/batch"
-
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/record"
-
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
 
@@ -40,7 +38,7 @@ import (
 // JobControlInterface defines interface for JobControl
 type JobControlInterface interface {
 	// CreateJob
-	CreateJob(namespace string, template *batch.JobTemplateSpec, object runtime.Object, key string) error
+	CreateJob(namespace string, template *batch.JobTemplateSpec, object runtime.Object, key string) (*batch.Job, error)
 	// DeleteJob
 	DeleteJob(namespace, name string, object runtime.Object) error
 }
@@ -85,34 +83,62 @@ func getJobsAnnotationSet(template *batch.JobTemplateSpec, object runtime.Object
 	return desiredAnnotations, nil
 }
 
-func getWorkflowJobLabelSet(workflow *wapi.Workflow, template *batch.JobTemplateSpec, stepName string) labels.Set {
-	desiredLabels := make(labels.Set)
+// TODO: remove it as soon we rebase with latest labels package
+func convertSelectorToLabelsMap(selector *unversioned.LabelSelector) (labels.Set, error) {
+	labelsMap := labels.Set{}
+
+	if selector == nil {
+		return labelsMap, nil
+	}
+
+	if selector.MatchLabels != nil {
+		return selector.MatchLabels, nil
+	}
+	// TODO: handle MatchExpressions
+
+	return labelsMap, nil
+}
+func getWorkflowJobLabelSet(workflow *wapi.Workflow, template *batch.JobTemplateSpec, stepName string) (labels.Set, error) {
+	desiredLabels, err := convertSelectorToLabelsMap(workflow.Spec.Selector)
+	if err != nil {
+		return nil, fmt.Errorf("unable to convert workflow selector to labels: %v", err)
+	}
+
+	/*desiredLabels := make(labels.Set)
 	for k, v := range workflow.Labels {
 		desiredLabels[k] = v
 	}
+	*/
 	for k, v := range template.Labels {
 		desiredLabels[k] = v
 	}
 	desiredLabels[WorkflowStepLabelKey] = stepName // @sdminonne: TODO double check this
-	return desiredLabels
+	return desiredLabels, nil
 }
 
 // CreateWorkflowJobLabelSelector creates job label selector
 func CreateWorkflowJobLabelSelector(workflow *wapi.Workflow, template *batch.JobTemplateSpec, stepName string) labels.Selector {
-	return labels.SelectorFromSet(getWorkflowJobLabelSet(workflow, template, stepName))
+	set, err := getWorkflowJobLabelSet(workflow, template, stepName)
+	if err != nil {
+		return nil
+	}
+	return labels.SelectorFromSet(set)
 }
 
 // CreateJob creates a Job According to a specific JobTemplateSpec
-func (w WorkflowJobControl) CreateJob(namespace string, template *batch.JobTemplateSpec, object runtime.Object, stepName string) error {
+func (w WorkflowJobControl) CreateJob(namespace string, template *batch.JobTemplateSpec, object runtime.Object, stepName string) (*batch.Job, error) {
 	workflow := object.(*wapi.Workflow)
-	desiredLabels := getWorkflowJobLabelSet(workflow, template, stepName)
+	desiredLabels, err := getWorkflowJobLabelSet(workflow, template, stepName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch labels from workflow.spec: %v", err)
+	}
 	desiredAnnotations, err := getJobsAnnotationSet(template, object)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("unable to create annotation: %v", err)
 	}
 	meta, err := api.ObjectMetaFor(object)
 	if err != nil {
-		return fmt.Errorf("object does not have ObjectMeta, %v", err)
+		return nil, fmt.Errorf("object does not have ObjectMeta, %v", err)
 	}
 	prefix := getJobsPrefix(meta.Name)
 	job := &batch.Job{
@@ -124,16 +150,16 @@ func (w WorkflowJobControl) CreateJob(namespace string, template *batch.JobTempl
 	}
 
 	if err := api.Scheme.Convert(&(template.Spec), &job.Spec, nil); err != nil {
-		return fmt.Errorf("unable to convert job template: %v", err)
+		return nil, fmt.Errorf("unable to convert job template: %v", err)
 	}
 
 	newJob, err := w.KubeClient.Batch().Jobs(namespace).Create(job)
 	if err != nil {
-		w.Recorder.Eventf(object, api.EventTypeWarning, "FailedCreate", "Error creating: %v", err)
-		return fmt.Errorf("unable to create job: %v", err)
+		w.Recorder.Eventf(object, api.EventTypeWarning, "FailedCreate", "Error creating job: %v", err)
+		return nil, fmt.Errorf("unable to create job: %v", err)
 	}
 	glog.V(4).Infof("Controller %v created job %v", meta.Name, newJob.Name)
-	return nil
+	return newJob, nil
 }
 
 // DeleteJob deletes a Job
@@ -166,11 +192,11 @@ type FakeJobControl struct {
 var _ JobControlInterface = &FakeJobControl{}
 
 // CreateJob add JobTemplateSpec to the list of the CreatedJobTemplates
-func (f *FakeJobControl) CreateJob(namespace string, template *batch.JobTemplateSpec, object runtime.Object, key string) error {
+func (f *FakeJobControl) CreateJob(namespace string, template *batch.JobTemplateSpec, object runtime.Object, key string) (*batch.Job, error) {
 	f.Lock()
 	defer f.Unlock()
 	f.CreatedJobTemplates = append(f.CreatedJobTemplates, *template)
-	return nil
+	return nil, nil
 }
 
 // DeleteJob add Job name to DeletedJobNames

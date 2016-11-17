@@ -56,7 +56,7 @@ type Controller struct {
 	//jobControl is needed to create/delete Jobs
 	jobControl JobControlInterface
 
-	// To allow injection of updateWorkflowStatus for testing.
+	// To allow injection of updateWorkflow for testing.
 	updateHandler func(workflow *wapi.Workflow) error
 	syncHandler   func(workflowKey string) error
 	// jobStoreSynced returns true if the jod store has been synced at least once.
@@ -150,12 +150,14 @@ func NewController(kubeClient clientset.Interface, wfClient wclient.Interface, r
 				wc.enqueueController(w)
 			},
 			UpdateFunc: func(old, cur interface{}) {
-				wc.enqueueController(cur)
+				if workflow, ok := cur.(*wapi.Workflow); ok && !isWorkflowFinished(workflow) {
+					wc.enqueueController(cur)
+				}
 			},
 			DeleteFunc: wc.enqueueController,
 		},
 	)
-	wc.updateHandler = wc.updateWorkflowStatus
+	wc.updateHandler = wc.updateWorkflow
 	wc.syncHandler = wc.syncWorkflow
 	return wc
 }
@@ -267,7 +269,7 @@ func (w *Controller) syncWorkflow(key string) error {
 
 	workflow, ok := obj.(*wapi.Workflow)
 	if !ok {
-		glog.Errorf("Couldn't obtain workflow from %t", obj)
+		return fmt.Errorf("couldn't obtain workflow from %t", obj)
 	}
 	workflowKey, err := controller.KeyFunc(workflow)
 	if err != nil {
@@ -285,10 +287,6 @@ func (w *Controller) syncWorkflow(key string) error {
 	workflowNeedsSync := w.expectations.SatisfiedExpectations(workflowKey)
 	if !workflowNeedsSync {
 		glog.V(4).Infof("Workflow %v doesn't need synch", workflow.Name)
-		return nil
-	}
-
-	if isWorkflowFinished(workflow) {
 		return nil
 	}
 
@@ -313,13 +311,14 @@ func (w *Controller) syncWorkflow(key string) error {
 		return nil
 	}
 
-	if w.manageWorkflow(workflow) {
-		if err = w.updateHandler(workflow); err != nil {
+	updatedWorkflow := w.manageWorkflow(workflow)
+	if updatedWorkflow {
+		err := w.updateHandler(workflow)
+		if err != nil {
 			glog.Errorf("Failed to update workflow %v, requeuing.  Error: %v", workflow.Name, err)
 			w.enqueueController(workflow)
 			return nil
 		}
-		glog.Infof("Workflow %q status updated", workflow.Name)
 	}
 	return nil
 }
@@ -336,9 +335,11 @@ func pastActiveDeadline(workflow *wapi.Workflow) bool {
 	return duration >= allowedDuration
 }
 
-func (w *Controller) updateWorkflowStatus(workflow *wapi.Workflow) error {
-	// todo @sdminonne: client to support UpdateStatus ??
+func (w *Controller) updateWorkflow(workflow *wapi.Workflow) error {
 	_, err := w.wfClient.Workflows(workflow.GetNamespace()).Update(workflow)
+	if err != nil {
+		glog.Errorf("Unable to update workflow: %v", err)
+	}
 	return err
 }
 
@@ -441,8 +442,8 @@ func (w *Controller) manageWorkflow(workflow *wapi.Workflow) bool {
 		switch {
 		case workflow.Spec.Steps[i].JobTemplate != nil: // Job step
 			needsStatusUpdate = w.manageWorkflowJobStep(workflow, stepName, &(workflow.Spec.Steps[i])) || needsStatusUpdate
-			//case workflow.Spec.Steps[i].ExternalRef != nil: // TODO handle: external object reference
-			//	needsStatusUpdate = w.manageWorkflowReference(workflow, stepName, &step) || needsStatusUpdate
+		case workflow.Spec.Steps[i].ExternalRef != nil: // TODO handle: external object reference
+			needsStatusUpdate = w.manageWorkflowReferenceStep(workflow, stepName, &(workflow.Spec.Steps[i])) || needsStatusUpdate
 		}
 	}
 
@@ -457,6 +458,7 @@ func (w *Controller) manageWorkflow(workflow *wapi.Workflow) bool {
 		workflow.Status.Conditions = append(workflow.Status.Conditions, condition)
 		workflow.Status.CompletionTime = &now
 		needsStatusUpdate = true
+		glog.Infof("Workflow %s/%s complete.", workflow.Namespace, workflow.Name)
 	}
 
 	return needsStatusUpdate
@@ -502,7 +504,7 @@ func (w *Controller) manageWorkflowJobStep(workflow *wapi.Workflow, stepName str
 	}
 	switch len(jobs) {
 	case 0: // create job
-		err := w.jobControl.CreateJob(workflow.Namespace, step.JobTemplate, workflow, stepName)
+		_, err := w.jobControl.CreateJob(workflow.Namespace, step.JobTemplate, workflow, stepName)
 		if err != nil {
 			glog.Errorf("Couldn't create job: %v : %v", err, step.JobTemplate)
 			defer utilruntime.HandleError(err)
@@ -531,6 +533,10 @@ func (w *Controller) manageWorkflowJobStep(workflow *wapi.Workflow, stepName str
 		glog.Errorf("Workflow.manageWorkfloJob %v too many jobs reported... Need reconciliation", workflow.Name)
 		return false
 	}
+	return true
+}
+
+func (w *Controller) manageWorkflowReferenceStep(workflow *wapi.Workflow, stepName string, step *wapi.WorkflowStep) bool {
 	return true
 }
 

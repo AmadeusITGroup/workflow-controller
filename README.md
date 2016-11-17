@@ -12,7 +12,7 @@ $ ./workflow-controller --kubeconfig=$HOME/.kube/config --resource-versions=v1 -
 Now you can create a Workflow resource via
 
 ```shell
-$ ./cluster/kubectl.sh create -f .../examples/hello_workflow/workflow.yaml
+$ ./cluster/kubectl.sh create -f .../examples/hello_workflow/workflow.yaml --validate=false
 ```
 
 At this point the workflow-controller will start to handle the jobs.

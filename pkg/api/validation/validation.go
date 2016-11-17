@@ -57,6 +57,8 @@ func ValidateWorkflowSpec(spec *wapi.WorkflowSpec, fieldPath *field.Path) field.
 	} else {
 		allErrs = append(allErrs, unversionedvalidation.ValidateLabelSelector(spec.Selector, fieldPath.Child("selector"))...)
 	}
+	// TODO: workflow.spec.selector must be convertible to labels.Set
+	// TODO: JobsTemplate must not have any label confliciting with workflow.spec.selector
 	allErrs = append(allErrs, ValidateWorkflowSteps(spec.Steps, fieldPath.Child("steps"))...)
 	return allErrs
 }
