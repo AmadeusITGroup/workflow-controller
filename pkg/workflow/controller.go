@@ -143,14 +143,21 @@ func NewController(kubeClient clientset.Interface, wfClient wclient.Interface, r
 				}
 
 				removeInvalidWorkflow := true // TODO: @sdminonne it should be configurable
-				if err := wc.defaultAndValidateWorkflow(w, removeInvalidWorkflow); err != nil {
-					glog.Errorf("Unable to default and validate workflow: %v", err)
+				defaultedWorkflow, err := wc.defaultWorkflow(w)
+				if err != nil {
+					// TODO: @sdminonne: annotate or remove according to removeInvalidWorkflow
+					glog.Errorf("Unable to default workflow: %s", w.Name)
 					return
 				}
-				wc.enqueueController(w)
+				if err := wc.validateWorkflow(defaultedWorkflow, removeInvalidWorkflow); err != nil {
+					glog.Errorf("Unable to validate workflow: %s", defaultedWorkflow.Name)
+					return
+				}
+				wc.updateHandler(defaultedWorkflow)
+				wc.enqueueController(defaultedWorkflow)
 			},
 			UpdateFunc: func(old, cur interface{}) {
-				if workflow, ok := cur.(*wapi.Workflow); ok && !isWorkflowFinished(workflow) {
+				if workflow, ok := cur.(*wapi.Workflow); ok && !IsWorkflowFinished(workflow) {
 					wc.enqueueController(cur)
 				}
 			},
@@ -160,6 +167,35 @@ func NewController(kubeClient clientset.Interface, wfClient wclient.Interface, r
 	wc.updateHandler = wc.updateWorkflow
 	wc.syncHandler = wc.syncWorkflow
 	return wc
+}
+
+func (w *Controller) defaultWorkflow(workflow *wapi.Workflow) (*wapi.Workflow, error) {
+	defaultedWorkflow, err := wapi.NewBasicDefaulter().Default(workflow)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't default Workflow %q: %v", workflow.Name, err)
+	}
+	return defaultedWorkflow, nil
+}
+
+func (w *Controller) validateWorkflow(workflow *wapi.Workflow, removeInvalidWorkflow bool) error {
+	errs := wapivalidation.ValidateWorkflow(workflow)
+	if len(errs) != 0 {
+		validationErrors := fmt.Errorf("Invalid workflow %q: %v", workflow.Name, errs.ToAggregate())
+		if removeInvalidWorkflow {
+			err := w.wfClient.Workflows(workflow.Namespace).Delete(workflow.Name, nil)
+			if err != nil {
+				return fmt.Errorf("%v: unable to remove it: %v", validationErrors, err)
+			}
+			return fmt.Errorf("%v: removed", validationErrors)
+		}
+		// TODO: annotate invalid workflow if not removed: user may want to patch it and feedback may come from annotation
+		return validationErrors
+	}
+	if _, err := w.wfClient.Workflows(workflow.GetNamespace()).Update(workflow); err != nil {
+		return fmt.Errorf("unable to default workflow %q: %v", workflow.Name, err)
+	}
+	glog.Infof("Worklow %q defaulted", workflow.Name)
+	return nil
 }
 
 func (w *Controller) defaultAndValidateWorkflow(workflow *wapi.Workflow, removeInvalidWorkflow bool) error {
@@ -224,22 +260,27 @@ func (w *Controller) getJobWorkflow(job *batch.Job) *wapi.Workflow {
 	return &workflows[0]
 }
 
-// worker runs a worker thread that just dequeues items, processes them, and marks them done.
-// It enforces that the syncHandler is never invoked concurrently with the same key.
 func (w *Controller) worker() {
-	for {
-		func() {
-			key, quit := w.queue.Get()
-			if quit {
-				return
-			}
-			defer w.queue.Done(key)
-			err := w.syncHandler(key.(string))
-			if err != nil {
-				glog.Errorf("Error syncing workflow: %v", err)
-			}
-		}()
+	for w.processNextWorkItem() {
 	}
+}
+
+func (w *Controller) processNextWorkItem() bool {
+	key, quit := w.queue.Get()
+	if quit {
+		return false
+	}
+	defer w.queue.Done(key)
+
+	err := w.syncHandler(key.(string))
+	if err == nil {
+		//w.queue.Forget(key) //TODO: @sdminonne: add rate limiter
+		return true
+	}
+
+	utilruntime.HandleError(fmt.Errorf("Error syncing workflow: %v", err))
+	//w.queue.AddRateLimited(key)
+	return true
 }
 
 func (w *Controller) syncWorkflow(key string) error {
@@ -343,8 +384,8 @@ func (w *Controller) updateWorkflow(workflow *wapi.Workflow) error {
 	return err
 }
 
-// A workflow is finished if one of its condition is Complete or Failed.
-func isWorkflowFinished(w *wapi.Workflow) bool {
+// IsWorkflowFinished checks wether a workflow is finished. A workflow is finished if one of its condition is Complete or Failed.
+func IsWorkflowFinished(w *wapi.Workflow) bool {
 	for _, c := range w.Status.Conditions {
 		if c.Status == api.ConditionTrue && (c.Type == wapi.WorkflowComplete || c.Type == wapi.WorkflowFailed) {
 			return true
@@ -482,25 +523,26 @@ func (w *Controller) retrieveJobsStep(workflow *wapi.Workflow, template *batch.J
 
 // manageWorkflowJobStep handle a workflow step for JobTemplate.
 func (w *Controller) manageWorkflowJobStep(workflow *wapi.Workflow, stepName string, step *wapi.WorkflowStep) bool {
+	workflowUpdated := false
 	for _, dependencyName := range step.Dependencies {
 		dependencyStatus := workflow.GetStepStatusByName(dependencyName)
 		if dependencyStatus == nil || !dependencyStatus.Complete {
 			glog.V(4).Infof("Dependecy %q not satisfied for %q", dependencyName, stepName)
-			return false
+			return workflowUpdated
 		}
 	}
 	// all dependency satisfied (or missing) need action: update or create step
 	key, err := controller.KeyFunc(workflow)
 	if err != nil {
 		glog.Errorf("Couldn't get key for workflow %#v: %v", workflow, err)
-		return false
+		return workflowUpdated
 	}
 
 	jobs, err := w.retrieveJobsStep(workflow, step.JobTemplate, stepName)
 	if err != nil {
 		glog.Errorf("Error getting jobs for step %q in workflow %q: %v", stepName, key, err)
 		w.queue.Add(key)
-		return false
+		return workflowUpdated
 	}
 	switch len(jobs) {
 	case 0: // create job
@@ -508,9 +550,10 @@ func (w *Controller) manageWorkflowJobStep(workflow *wapi.Workflow, stepName str
 		if err != nil {
 			glog.Errorf("Couldn't create job: %v : %v", err, step.JobTemplate)
 			defer utilruntime.HandleError(err)
-			w.expectations.CreationObserved(key)
-			return false
+			return workflowUpdated
 		}
+		w.expectations.CreationObserved(key)
+		workflowUpdated = true
 		glog.V(4).Infof("Job created for step %q", stepName)
 	case 1: // update status
 		job := jobs[0]
@@ -529,11 +572,12 @@ func (w *Controller) manageWorkflowJobStep(workflow *wapi.Workflow, stepName str
 		} else {
 			stepStatus.Complete = jobFinished
 		}
+		workflowUpdated = true
 	default: // reconciliate
 		glog.Errorf("Workflow.manageWorkfloJob %v too many jobs reported... Need reconciliation", workflow.Name)
 		return false
 	}
-	return true
+	return workflowUpdated
 }
 
 func (w *Controller) manageWorkflowReferenceStep(workflow *wapi.Workflow, stepName string, step *wapi.WorkflowStep) bool {

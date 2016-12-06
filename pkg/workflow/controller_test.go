@@ -259,7 +259,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 			},
 			jobs: []batch.Job{}, // jobs no retrieved step only
 			checkWorkflow: func(testName string, workflow *wapi.Workflow, t *testing.T) {
-				if !isWorkflowFinished(workflow) {
+				if !IsWorkflowFinished(workflow) {
 					t.Errorf("%s, Workflow should be finished:\n %#v", testName, workflow)
 				}
 				if workflow.Status.CompletionTime == nil {
@@ -490,7 +490,7 @@ func TestSyncWorkflowPastDeadline(t *testing.T) {
 				},
 			},
 			checkWorkflow: func(testName string, workflow *wapi.Workflow, t *testing.T) {
-				if !isWorkflowFinished(workflow) {
+				if !IsWorkflowFinished(workflow) {
 					t.Errorf("%s, Workflow should be finished:\n %#v", testName, workflow)
 				}
 				if workflow.Status.CompletionTime == nil {
@@ -667,8 +667,8 @@ func TestIsWorkflowFinished(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		if isWorkflowFinished(tc.workflow) != tc.finished {
-			t.Errorf("%s - Expected %v got %v", tc.name, tc.finished, isWorkflowFinished(tc.workflow))
+		if IsWorkflowFinished(tc.workflow) != tc.finished {
+			t.Errorf("%s - Expected %v got %v", tc.name, tc.finished, IsWorkflowFinished(tc.workflow))
 		}
 	}
 }

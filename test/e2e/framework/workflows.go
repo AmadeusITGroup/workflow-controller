@@ -5,11 +5,15 @@ import (
 
 	. "github.com/onsi/gomega"
 
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 
+	wapi "github.com/sdminonne/workflow-controller/pkg/api"
 	"github.com/sdminonne/workflow-controller/pkg/client"
 )
 
@@ -60,4 +64,64 @@ func BuildAndSetClients() (client.Interface, clientset.Interface) {
 	Ω(err).ShouldNot(HaveOccurred())
 	Ω(workflowClient).ShouldNot(BeNil())
 	return workflowClient, kubeClient
+}
+
+// NewWorkflow creates a workflow
+func NewWorkflow(group, version, name, namespace string) *wapi.Workflow {
+	return &wapi.Workflow{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "Workflow",
+			APIVersion: group + "/" + version,
+		},
+
+		ObjectMeta: api.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: wapi.WorkflowSpec{
+			Steps: []wapi.WorkflowStep{
+				{
+					Name: "one",
+					JobTemplate: &batch.JobTemplateSpec{
+						ObjectMeta: api.ObjectMeta{
+							Labels: map[string]string{
+								"workflow": "step_one",
+							},
+						},
+						Spec: batch.JobSpec{
+							Template: api.PodTemplateSpec{
+								ObjectMeta: api.ObjectMeta{
+									Labels: map[string]string{
+										"foo": "bar",
+									},
+								},
+								Spec: api.PodSpec{
+									Containers: []api.Container{
+										{
+											Name:            "step-one-wait-and-exit",
+											Image:           "gcr.io/google_containers/busybox",
+											Command:         []string{"sh", "-c", "echo Starting on: $(date); sleep 5; echo Goodbye cruel world at: $(date)"},
+											ImagePullPolicy: "IfNotPresent",
+										},
+									},
+									RestartPolicy: "Never",
+									DNSPolicy:     "Default",
+								},
+							},
+						},
+					},
+				},
+			},
+
+			Selector: &unversioned.LabelSelector{
+				MatchLabels: map[string]string{
+					"workflow": "hello",
+				},
+			},
+		},
+		Status: wapi.WorkflowStatus{
+			Conditions: []wapi.WorkflowCondition{},
+			Statuses:   []wapi.WorkflowStepStatus{},
+		},
+	}
 }

@@ -1,21 +1,23 @@
 package e2e
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"k8s.io/kubernetes/pkg/api"
 
-	wapitesting "github.com/sdminonne/workflow-controller/pkg/api/testing"
+	"github.com/sdminonne/workflow-controller/pkg/workflow"
 	"github.com/sdminonne/workflow-controller/test/e2e/framework"
 )
 
-var _ = Describe("Workflowc CRUD", func() {
+var _ = Describe("Workflow CRUD", func() {
 
 	It("should create a workflow", func() {
 		workflowClient, _ := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
-		myWorkflow := wapitesting.NewWorkflow(framework.FrameworkContext.ResourceGroup, framework.FrameworkContext.ResourceVersion, "mydag", ns, nil)
+		myWorkflow := framework.NewWorkflow(framework.FrameworkContext.ResourceGroup, framework.FrameworkContext.ResourceVersion, "hello-workflow", ns)
 		Eventually(func() error {
 			_, err := workflowClient.Workflows(ns).Create(myWorkflow)
 			return err
@@ -25,15 +27,17 @@ var _ = Describe("Workflowc CRUD", func() {
 			workflowClient.Workflows(ns).Delete(myWorkflow.Name, nil)
 			By("Workflow deleted")
 		}()
+
+		Eventually(func() error {
+			curr, err := workflowClient.Workflows(ns).Get(myWorkflow.Name)
+			if err != nil {
+				return err
+			}
+			if workflow.IsWorkflowFinished(curr) {
+				return nil
+			}
+			framework.Logf("Workflow not yet finished %v", curr)
+			return fmt.Errorf("workflow %s not finished", myWorkflow.Name)
+		}, "40s", "5s").ShouldNot(HaveOccurred())
+
 	})
-	It("should fail to create a workflow", func() {
-		//workflowClient, kubeClient := framework.BuildAndSetClients()
-		//ns := api.NamespaceDefault
-		//myWorkflow := wapitesting.NewWorkflow(framework.FrameworkContext.ResourceGroup, framework.FrameworkContext.ResourceVersion, "mydag", ns, nil)
-	})
-	It("should check defaulting", func() {
-		//workflowClient, kubeClient := framework.BuildAndSetClients()
-		//fmt.Printf("%v %v\n", workflowClient, kubeClient)
-		//fmt.Printf("Three!!")
-	})
-})

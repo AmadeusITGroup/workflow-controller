@@ -43,14 +43,14 @@ func NewJobTemplateSpec() *batch.JobTemplateSpec {
 			Template: api.PodTemplateSpec{
 				ObjectMeta: api.ObjectMeta{
 					Labels: map[string]string{
-						"foo": "bar",
+						"workflow": "step-one",
 					},
 				},
 				Spec: api.PodSpec{
 					Containers: []api.Container{
 						{
-							Name:            "baz",
-							Image:           "foo/bar",
+							Name:            "step-one-wait-and-exit",
+							Image:           "gcr.io/google_containers/busybox",
 							Command:         []string{"sh", "-c", "echo Starting on: $(date); sleep 5; echo Goodbye cruel world at: $(date)"},
 							ImagePullPolicy: "IfNotPresent",
 						},
