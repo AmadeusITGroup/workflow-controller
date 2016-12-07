@@ -67,7 +67,7 @@ func BuildAndSetClients() (client.Interface, clientset.Interface) {
 }
 
 // NewWorkflow creates a workflow
-func NewWorkflow(group, version, name, namespace string) *wapi.Workflow {
+func NewWorkflow(group, version, name, namespace string, activeDeadlineSeconds *int64) *wapi.Workflow {
 	return &wapi.Workflow{
 		TypeMeta: unversioned.TypeMeta{
 			Kind:       "Workflow",
@@ -79,6 +79,7 @@ func NewWorkflow(group, version, name, namespace string) *wapi.Workflow {
 			Namespace: namespace,
 		},
 		Spec: wapi.WorkflowSpec{
+			ActiveDeadlineSeconds: activeDeadlineSeconds,
 			Steps: []wapi.WorkflowStep{
 				{
 					Name: "one",

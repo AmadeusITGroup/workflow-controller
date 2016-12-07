@@ -174,6 +174,7 @@ func (w *Controller) defaultWorkflow(workflow *wapi.Workflow) (*wapi.Workflow, e
 	if err != nil {
 		return nil, fmt.Errorf("couldn't default Workflow %q: %v", workflow.Name, err)
 	}
+	glog.Infof("Worklow %q defaulted", workflow.Name) // TODO: @sdminonne validation is f(version)
 	return defaultedWorkflow, nil
 }
 
@@ -191,36 +192,7 @@ func (w *Controller) validateWorkflow(workflow *wapi.Workflow, removeInvalidWork
 		// TODO: annotate invalid workflow if not removed: user may want to patch it and feedback may come from annotation
 		return validationErrors
 	}
-	if _, err := w.wfClient.Workflows(workflow.GetNamespace()).Update(workflow); err != nil {
-		return fmt.Errorf("unable to default workflow %q: %v", workflow.Name, err)
-	}
-	glog.Infof("Worklow %q defaulted", workflow.Name)
-	return nil
-}
-
-func (w *Controller) defaultAndValidateWorkflow(workflow *wapi.Workflow, removeInvalidWorkflow bool) error {
-	defaultedWorkflow, err := wapi.NewBasicDefaulter().Default(workflow)
-	if err != nil {
-		return fmt.Errorf("couldn't default Workflow %q: %v", workflow.Name, err)
-	}
-
-	errs := wapivalidation.ValidateWorkflow(defaultedWorkflow)
-	if len(errs) != 0 {
-		validationErrors := fmt.Errorf("Invalid workflow %q: %v", workflow.Name, errs.ToAggregate())
-		if removeInvalidWorkflow {
-			err := w.wfClient.Workflows(workflow.Namespace).Delete(workflow.Name, nil)
-			if err != nil {
-				return fmt.Errorf("%v: unable to remove it: %v", validationErrors, err)
-			}
-			return fmt.Errorf("%v: removed", validationErrors)
-		}
-		// TODO: annotate invalid workflow if not removed: user may want to patch it and feedback may come from annotation
-		return validationErrors
-	}
-	if _, err = w.wfClient.Workflows(workflow.GetNamespace()).Update(defaultedWorkflow); err != nil {
-		return fmt.Errorf("unable to default workflow %q: %v", workflow.Name, err)
-	}
-	glog.Infof("Worklow %q defaulted", workflow.Name)
+	glog.Infof("Worklow %q validated", workflow.Name)
 	return nil
 }
 
@@ -318,7 +290,7 @@ func (w *Controller) syncWorkflow(key string) error {
 		return err
 	}
 
-	if workflow.Status.Statuses == nil {
+	if workflow.Status.StartTime == nil {
 		workflow.Status.Statuses = make([]wapi.WorkflowStepStatus, 0)
 		now := unversioned.Now()
 		workflow.Status.StartTime = &now
@@ -378,9 +350,6 @@ func pastActiveDeadline(workflow *wapi.Workflow) bool {
 
 func (w *Controller) updateWorkflow(workflow *wapi.Workflow) error {
 	_, err := w.wfClient.Workflows(workflow.GetNamespace()).Update(workflow)
-	if err != nil {
-		glog.Errorf("Unable to update workflow: %v", err)
-	}
 	return err
 }
 

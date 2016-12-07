@@ -152,7 +152,7 @@ func (w *workflows) List(options api.ListOptions) (*wapi.WorkflowList, error) {
 	v1.Convert_api_ListOptions_To_v1_ListOptions(&options, &v1Options, nil)
 	obj, err := w.c.Resource(w.resource, w.ns).List(&v1Options)
 	if err != nil {
-		return nil, fmt.Errorf("unabel to list workflows: %v ", err)
+		return nil, fmt.Errorf("unable to list workflows: %v ", err)
 	}
 
 	uList, ok := obj.(*runtime.UnstructuredList)

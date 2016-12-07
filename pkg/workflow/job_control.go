@@ -104,11 +104,6 @@ func getWorkflowJobLabelSet(workflow *wapi.Workflow, template *batch.JobTemplate
 		return nil, fmt.Errorf("unable to convert workflow selector to labels: %v", err)
 	}
 
-	/*desiredLabels := make(labels.Set)
-	for k, v := range workflow.Labels {
-		desiredLabels[k] = v
-	}
-	*/
 	for k, v := range template.Labels {
 		desiredLabels[k] = v
 	}

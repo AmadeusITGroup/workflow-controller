@@ -81,6 +81,7 @@ func getKey(w *wapi.Workflow, t *testing.T) string {
 }
 
 func TestControllerSyncWorkflow(t *testing.T) {
+	now := unversioned.Now()
 	testCases := map[string]struct {
 		workflow           *wapi.Workflow
 		jobs               []batch.Job
@@ -150,7 +151,6 @@ func TestControllerSyncWorkflow(t *testing.T) {
 				},
 			},
 			checkWorkflow: func(testName string, workflow *wapi.Workflow, t *testing.T) {
-				//stepStatus, ok := workflow.Status.Statuses["myJob"]
 				stepStatus := workflow.GetStepStatusByName("myJob")
 				if stepStatus == nil {
 					t.Errorf("%s, Workflow step not updated", testName)
@@ -182,6 +182,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 					},
 				},
 				Status: wapi.WorkflowStatus{
+					StartTime:  &now,
 					Conditions: []wapi.WorkflowCondition{},
 					Statuses: []wapi.WorkflowStepStatus{
 						newJobTemplateStatus(),
@@ -212,7 +213,6 @@ func TestControllerSyncWorkflow(t *testing.T) {
 			},
 			checkWorkflow: func(testName string, workflow *wapi.Workflow, t *testing.T) {
 				stepStatus := workflow.GetStepStatusByName("myJob")
-				//stepStatus, ok := workflow.Status.Statuses["myJob"]
 				if stepStatus == nil {
 					t.Errorf("%s, Workflow step not updated", testName)
 					return
@@ -243,6 +243,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 					},
 				},
 				Status: wapi.WorkflowStatus{
+					StartTime:  &now,
 					Conditions: []wapi.WorkflowCondition{},
 					Statuses: []wapi.WorkflowStepStatus{
 						{
@@ -307,6 +308,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 					},
 				},
 				Status: wapi.WorkflowStatus{
+					StartTime:  &now,
 					Conditions: []wapi.WorkflowCondition{},
 					Statuses: []wapi.WorkflowStepStatus{
 						{
@@ -439,6 +441,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 }
 
 func TestSyncWorkflowPastDeadline(t *testing.T) {
+	now := unversioned.Now()
 	testCases := map[string]struct {
 		startTime             int64
 		activeDeadlineSeconds int64
@@ -468,6 +471,7 @@ func TestSyncWorkflowPastDeadline(t *testing.T) {
 					},
 				},
 				Status: wapi.WorkflowStatus{
+					StartTime:  &now,
 					Conditions: []wapi.WorkflowCondition{},
 					Statuses: []wapi.WorkflowStepStatus{
 						newJobTemplateStatus(),
