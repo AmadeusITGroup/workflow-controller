@@ -107,7 +107,8 @@ func getWorkflowJobLabelSet(workflow *wapi.Workflow, template *batch.JobTemplate
 	for k, v := range template.Labels {
 		desiredLabels[k] = v
 	}
-	desiredLabels[WorkflowStepLabelKey] = stepName // @sdminonne: TODO double check this
+	desiredLabels[WorkflowLabelKey] = workflow.Name
+	desiredLabels[WorkflowStepLabelKey] = stepName
 	return desiredLabels, nil
 }
 

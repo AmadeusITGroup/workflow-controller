@@ -42,7 +42,10 @@ import (
 )
 
 // WorkflowStepLabelKey defines the key of label to be injected by workflow controller
-const WorkflowStepLabelKey = "kubernetes.io/workflow"
+const (
+	WorkflowLabelKey     = "kubernetes.io/workflow"
+	WorkflowStepLabelKey = "kubernetes.io/workflow-step"
+)
 
 // Controller is a useless struct I created just as a placeholder
 type Controller struct {

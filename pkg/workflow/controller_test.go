@@ -143,6 +143,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 						Labels: map[string]string{
 							"foo":                "bar",
 							WorkflowStepLabelKey: "myJob",
+							WorkflowLabelKey:     "mydag",
 						},
 						SelfLink: "/apis/v1/jobs/foo",
 					},
@@ -197,6 +198,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 						Labels: map[string]string{
 							"foo":                "bar",
 							WorkflowStepLabelKey: "myJob",
+							WorkflowLabelKey:     "mydag",
 						},
 						SelfLink: "/apis/v1/jobs/foo",
 					},
@@ -331,6 +333,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 						Labels: map[string]string{
 							"foo":                "bar",
 							WorkflowStepLabelKey: "one",
+							WorkflowLabelKey:     "mydag",
 						},
 						SelfLink: "/apis/v1/jobs/foo",
 					},
@@ -387,6 +390,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 						Labels: map[string]string{
 							"foo":                "bar",
 							WorkflowStepLabelKey: "one",
+							WorkflowLabelKey:     "mydag",
 						},
 						SelfLink: "/apis/v1/jobs/foo",
 					},
@@ -486,6 +490,7 @@ func TestSyncWorkflowPastDeadline(t *testing.T) {
 						Labels: map[string]string{
 							"foo":                "bar",
 							WorkflowStepLabelKey: "myJob",
+							WorkflowLabelKey:     "mydag",
 						},
 						SelfLink: "/apis/v1/jobs/foo",
 					},
