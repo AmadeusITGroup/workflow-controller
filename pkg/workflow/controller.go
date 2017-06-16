@@ -177,7 +177,7 @@ func (w *Controller) defaultWorkflow(workflow *wapi.Workflow) (*wapi.Workflow, e
 	if err != nil {
 		return nil, fmt.Errorf("couldn't default Workflow %q: %v", workflow.Name, err)
 	}
-	glog.Infof("Worklow %q defaulted", workflow.Name) // TODO: @sdminonne validation is f(version)
+	glog.Infof("Workflow %q defaulted", workflow.Name) // TODO: @sdminonne validation is f(version)
 	return defaultedWorkflow, nil
 }
 
@@ -195,7 +195,7 @@ func (w *Controller) validateWorkflow(workflow *wapi.Workflow, removeInvalidWork
 		// TODO: annotate invalid workflow if not removed: user may want to patch it and feedback may come from annotation
 		return validationErrors
 	}
-	glog.Infof("Worklow %q validated", workflow.Name)
+	glog.Infof("Workflow %q validated", workflow.Name)
 	return nil
 }
 
@@ -546,7 +546,7 @@ func (w *Controller) manageWorkflowJobStep(workflow *wapi.Workflow, stepName str
 		}
 		workflowUpdated = true
 	default: // reconciliate
-		glog.Errorf("Workflow.manageWorkfloJob %v too many jobs reported... Need reconciliation", workflow.Name)
+		glog.Errorf("Workflow.manageWorkflowJob %v too many jobs reported... Need reconciliation", workflow.Name)
 		return false
 	}
 	return workflowUpdated
