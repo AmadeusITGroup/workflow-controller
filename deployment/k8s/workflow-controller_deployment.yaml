@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: workflow-controller-deployment
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: workflow-controller
+    spec:
+      serviceAccount: workflow-controller
+      containers:
+      - name: workflow-controller
+        image: sdminonne/workflow-controller:latest
+        args: ["--v=4"]

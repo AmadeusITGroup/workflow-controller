@@ -1,54 +1,47 @@
 package framework
 
 import (
-	"flag"
 	"fmt"
-	"os"
 
-	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/sdminonne/workflow-controller/pkg/client"
 )
 
 // Framework stores necessary info to run e2e
 type Framework struct {
-	KubeMasterURL  string
-	KubeConfigPath string
-
-	ResourceName    string
-	ResourceGroup   string
-	ResourceVersion string
+	KubeConfig *rest.Config
 }
 
 type frameworkContextType struct {
-	Host            string
-	KubeConfigPath  string
-	ResourceName    string
-	ResourceGroup   string
-	ResourceVersion string
+	KubeConfigPath string
 }
 
+// FrameworkContext stores globally the framework context
 var FrameworkContext frameworkContextType
 
-func init() {
-	fmt.Printf("framework.Init\n")
-	flag.StringVar(&FrameworkContext.KubeConfigPath, clientcmd.RecommendedConfigPathFlag, os.Getenv(clientcmd.RecommendedConfigPathEnvVar), "Path to kubeconfig")
-	flag.StringVar(&FrameworkContext.Host, "host", "http://127.0.0.1:8080", "The host, or apiserver, to connect to")
-	flag.StringVar(&FrameworkContext.ResourceName, "name", "workflow", "The name of the resource")
-	flag.StringVar(&FrameworkContext.ResourceGroup, "group", "example.com", "The API group of the resource")
-	flag.StringVar(&FrameworkContext.ResourceVersion, "version", "v1", "The resource versions")
+// NewFramework creates and initializes the a Framework struct
+func NewFramework() (*Framework, error) {
+	Logf("KubeconfigPath-> %q", FrameworkContext.KubeConfigPath)
+	kubeConfig, err := clientcmd.BuildConfigFromFlags("", FrameworkContext.KubeConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve kubeConfig:%v", err)
+	}
+	return &Framework{
+		KubeConfig: kubeConfig,
+	}, nil
 }
 
-// NewFramework creates and initializes the a Framework struct
-func NewFramework() *Framework {
-	Logf("Host-> %q", FrameworkContext.Host)
-	Logf("KubeconfigPath-> %q", FrameworkContext.KubeConfigPath)
-	Logf("ResourceName-> %q", FrameworkContext.ResourceName)
-	Logf("ResourceGroup-> %q", FrameworkContext.ResourceGroup)
-	Logf("ResourceVersion-> %q", FrameworkContext.ResourceVersion)
-	return &Framework{
-		KubeMasterURL:   FrameworkContext.Host,
-		KubeConfigPath:  FrameworkContext.KubeConfigPath,
-		ResourceName:    FrameworkContext.ResourceName,
-		ResourceGroup:   FrameworkContext.ResourceGroup,
-		ResourceVersion: FrameworkContext.ResourceVersion,
+func (f *Framework) kubeClient() (*clientset.Clientset, error) {
+	return clientset.NewForConfig(f.KubeConfig)
+}
+
+func (f *Framework) workflowClient() (*rest.RESTClient, error) {
+	c, _, err := client.NewClient(f.KubeConfig)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create workflow client:%v", err)
 	}
+	return c, err
 }

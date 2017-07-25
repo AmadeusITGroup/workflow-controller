@@ -6,13 +6,13 @@ Kubernetes workflow controller
 ### locally
 
 ```shell
-$ ./workflow-controller --kubeconfig=$HOME/.kube/config --resource-versions=v1 --domain=example.com --name=workflow
+$ ./workflow-controller --kubeconfig=$HOME/.kube/config
 ```
 
 Now you can create a Workflow resource via
 
 ```shell
-$ ./cluster/kubectl.sh create -f .../examples/hello_workflow/workflow.yaml --validate=false
+$ kubectl create -f .../examples/hello_workflow/workflow.yaml
 ```
 
 At this point the workflow-controller will start to handle the jobs.
@@ -20,21 +20,18 @@ At this point the workflow-controller will start to handle the jobs.
 
 ### in a kubernetes pod
 
-```shell
-$ make container && make push
-$ cd example/workflow-controller_in_pod
-$ kubectl create -f workflow-controller-serviceaccount.yaml
-serviceaccount "workflow-controller" created
-$ kubectl create -f workflow-controller-deployment.yaml
-deployment "workflow-controller-deployment" created
-```
 
+To run `workflow-controller` in a Kubernetes pod you shoud run these commands
 
 ```shell
-$ make container && make push
-$ cd example/workflow-controller_in_pod
-$ kubectl create -f workflow-controller-serviceaccount.yaml
-serviceaccount "workflow-controller" created
-$ kubectl create -f workflow-controller-deployment.yaml
-deployment "workflow-controller-deployment" created
+$ kubectl create -f .../deployment/k8s/workflow-controller_serviceaccount.yaml
+$ kubectl create -f .../deployment/k8s/workflow-controller_deployment.yaml
 ```
+Then you may want to test a workflow example like this:
+
+```shell
+$ kubectl create -f  .../examples/hello_workflow/workflow.yaml
+```
+
+### in an openshift cluster
+TODO
