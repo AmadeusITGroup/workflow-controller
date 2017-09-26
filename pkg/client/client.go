@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"reflect"
 	"time"
 
@@ -13,6 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
+
+	"github.com/golang/glog"
 
 	wapi "github.com/sdminonne/workflow-controller/pkg/api/v1"
 )
@@ -55,7 +56,7 @@ func DefineWorklowResource(clientset apiextensionsclient.Interface) (*apiextensi
 				}
 			case apiextensionsv1beta1.NamesAccepted:
 				if cond.Status == apiextensionsv1beta1.ConditionFalse {
-					fmt.Printf("Name conflict: %v\n", cond.Reason)
+					glog.Errorf("Name conflict: %v\n", cond.Reason)
 				}
 			}
 		}

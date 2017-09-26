@@ -40,7 +40,7 @@ var _ JobControlInterface = &WorkflowJobControl{}
 func (w WorkflowJobControl) CreateJob(namespace string, template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, stepName string) (*batch.Job, error) {
 	job, err := initJob(template, workflow, stepName)
 	if err != nil {
-		return nil, fmt.Errorf("cannot create job:%v", err)
+		return nil, fmt.Errorf("cannot create job: %v", err)
 	}
 	return w.KubeClient.BatchV1().Jobs(namespace).Create(job)
 }
@@ -65,11 +65,11 @@ func (w WorkflowJobControl) DeleteJob(namespace, jobName string, object runtime.
 func initJob(template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, stepName string) (*batch.Job, error) {
 	desiredLabels, err := getJobLabelsSet(workflow, template, stepName)
 	if err != nil {
-		return nil, fmt.Errorf("unable to initialize Job for Workflow %s/%s step %s:%v", workflow.Namespace, workflow.Name, stepName, err)
+		return nil, fmt.Errorf("unable to initialize Job for Workflow %s/%s step %s: %v", workflow.Namespace, workflow.Name, stepName, err)
 	}
 	desiredAnnotations, err := getJobAnnotationsSet(workflow, template)
 	if err != nil {
-		return nil, fmt.Errorf("unable to initialize Job for Workflow %s/%s step %s:%v", workflow.Namespace, workflow.Name, stepName, err)
+		return nil, fmt.Errorf("unable to initialize Job for Workflow %s/%s step %s: %v", workflow.Namespace, workflow.Name, stepName, err)
 	}
 	jobGeneratedName := fmt.Sprintf("wfl-%s-%s-", workflow.Name, stepName)
 	job := &batch.Job{
@@ -83,7 +83,7 @@ func initJob(template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, stepNam
 	return job, nil
 }
 
-// FakeJobControl implementes WorkflowJobControl interface for testing purpouse
+// FakeJobControl implements WorkflowJobControl interface for testing purpose
 type FakeJobControl struct {
 }
 

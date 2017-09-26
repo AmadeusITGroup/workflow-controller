@@ -59,15 +59,13 @@ type WorkflowController struct {
 
 	JobInformer    cache.SharedIndexInformer
 	JobLister      batchv1listers.JobLister
-	JobStoreSynced cache.InformerSynced // returns true if job stroe has been synced. Added as member for testing
+	JobStoreSynced cache.InformerSynced // returns true if job has been synced. Added as member for testing
 
 	JobControl JobControlInterface
 
 	updateHandler func(*wapi.Workflow) error // callback to upate Workflow. Added as member for testing
 
 	queue workqueue.RateLimitingInterface // Workflows to be synced
-
-	cleanQueue workqueue.RateLimitingInterface // Workflows to be removed
 
 	Recorder record.EventRecorder
 
@@ -85,7 +83,6 @@ func NewWorkflowController(workflowClient *rest.RESTClient, workflowScheme *runt
 		WorkflowScheme: workflowScheme,
 		KubeClient:     kubeClient,
 		queue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "workflow"),
-		cleanQueue:     workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "workflow-clean"),
 		config: WorkflowControllerConfig{
 			RemoveIvalidWorkflow: true,
 			NumberOfThreads:      1,
@@ -148,10 +145,6 @@ func (w *WorkflowController) Run(ctx context.Context) error {
 	}
 
 	for i := 0; i < w.config.NumberOfThreads; i++ {
-		go wait.Until(w.cleanWorker, 5*time.Minute, ctx.Done())
-	}
-
-	for i := 0; i < w.config.NumberOfThreads; i++ {
 		go wait.Until(w.runWorker, time.Second, ctx.Done())
 	}
 
@@ -162,31 +155,6 @@ func (w *WorkflowController) Run(ctx context.Context) error {
 func (w *WorkflowController) runWorker() {
 	for w.processNextItem() {
 	}
-}
-
-func (w *WorkflowController) cleanWorker() {
-	for w.cleanNextItem() {
-	}
-}
-
-func (w *WorkflowController) cleanNextItem() bool {
-	key, quit := w.cleanQueue.Get()
-	if quit {
-		return false
-	}
-	defer w.cleanQueue.Done(key)
-	namespace, name, err := cache.SplitMetaNamespaceKey(key.(string))
-	if err != nil {
-		glog.Errorf("unable to dequeu %s from cleanQueue (queue to remove garbage workflows):%v", key, err)
-		w.cleanQueue.AddRateLimited(key)
-		return true
-	}
-	if err := w.deleteWorkflow(namespace, name); err != nil {
-		w.cleanQueue.AddRateLimited(key)
-		return true
-	}
-	w.cleanQueue.Forget(key)
-	return true
 }
 
 func (w *WorkflowController) processNextItem() bool {
@@ -232,7 +200,7 @@ func (w *WorkflowController) sync(key string) error {
 
 	obj, exists, err := w.workflowStore.GetByKey(key)
 	if err != nil {
-		glog.Errorf("unable to get Workflow %s/%s:%v", namespace, name, err)
+		glog.Errorf("unable to get Workflow %s/%s: %v", namespace, name, err)
 		return nil
 	}
 	if !exists {
@@ -245,8 +213,8 @@ func (w *WorkflowController) sync(key string) error {
 		!wapi.IsWorkflowDefaulted(sharedWorkflow) {
 		defaultedWorkflow := wapi.DefaultWorkflow(sharedWorkflow)
 		if err := w.updateHandler(defaultedWorkflow); err != nil {
-			glog.Errorf("WorkflowController.sync unable to default Workflow %s/%s:%v", namespace, name, err)
-			return fmt.Errorf("unable to default Workflow %s/%s:%v", namespace, name, err)
+			glog.Errorf("WorkflowController.sync unable to default Workflow %s/%s: %v", namespace, name, err)
+			return fmt.Errorf("unable to default Workflow %s/%s: %v", namespace, name, err)
 		}
 		glog.V(6).Infof("WorkflowController.sync Defaulted %s/%s", namespace, name)
 		return nil
@@ -254,10 +222,13 @@ func (w *WorkflowController) sync(key string) error {
 
 	// Validation...
 	if errs := wapi.ValidateWorkflow(sharedWorkflow); errs != nil && len(errs) > 0 {
-		glog.Errorf("WorkflowController.sync Worfklow %s/%s not valid:%v", namespace, name, errs)
+		glog.Errorf("WorkflowController.sync Worfklow %s/%s not valid: %v", namespace, name, errs)
 		if w.config.RemoveIvalidWorkflow {
-			glog.Errorf("Workflow %s/%s going to be removed", namespace, name)
-			w.cleanQueue.Add(key)
+			glog.Errorf("Invalid workflow %s/%s is going to be removed", namespace, name)
+			if err := w.deleteWorkflow(namespace, name); err != nil {
+				glog.Errorf("unable to delete invalid workflow %s/%s: %v", namespace, name, err)
+				return fmt.Errorf("unable to delete invalid workflow %s/%s: %v", namespace, name, err)
+			}
 		}
 		return nil
 	}
@@ -268,8 +239,8 @@ func (w *WorkflowController) sync(key string) error {
 	if !workflow.Status.Validated {
 		workflow.Status.Validated = true
 		if err := w.updateHandler(workflow); err != nil {
-			glog.Errorf("WorkflowController.sync Workflow %s/%s unable to set status.Validated to true:%v", namespace, name, err)
-			return fmt.Errorf("unable to set status.Validated to true:%s/%s:%v", namespace, name, err)
+			glog.Errorf("WorkflowController.sync Workflow %s/%s unable to set status.Validated to true: %v", namespace, name, err)
+			return fmt.Errorf("unable to set status.Validated to true:%s/%s: %v", namespace, name, err)
 		}
 		return nil
 	}
@@ -280,7 +251,7 @@ func (w *WorkflowController) sync(key string) error {
 		now := metav1.Now()
 		workflow.Status.StartTime = &now
 		if err := w.updateHandler(workflow); err != nil {
-			glog.Errorf("WorkflowController.sync Workflow %s/%s unable init startTime:%v", namespace, name, err)
+			glog.Errorf("WorkflowController.sync Workflow %s/%s unable init startTime: %v", namespace, name, err)
 			return err
 		}
 		glog.V(4).Infof("WorkflowController.sync Workflow %s/%s startTime updated", namespace, name)
@@ -292,12 +263,12 @@ func (w *WorkflowController) sync(key string) error {
 		workflow.Status.Conditions = append(workflow.Status.Conditions, newDeadlineExceededCondition())
 		workflow.Status.CompletionTime = &now
 		if err := w.updateHandler(workflow); err != nil {
-			glog.Errorf("Workflow %s/%s unable to set DeadlineExceeded:%v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
-			return fmt.Errorf("unable to set DeadlineExceeded for Workflow %s/%s:%v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
+			glog.Errorf("Workflow %s/%s unable to set DeadlineExceeded: %v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
+			return fmt.Errorf("unable to set DeadlineExceeded for Workflow %s/%s: %v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
 		}
 		if err := w.deleteWorkflowJobs(workflow); err != nil {
-			glog.Errorf("Workflow %s/%s unable to cleanup jobs:%v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
-			return fmt.Errorf("unable to cleanup jobs for %s/%s:%v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
+			glog.Errorf("Workflow %s/%s unable to cleanup jobs: %v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
+			return fmt.Errorf("unable to cleanup jobs for %s/%s: %v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
 		}
 		return nil
 	}
@@ -331,12 +302,14 @@ func (w *WorkflowController) onAddWorkflow(obj interface{}) {
 	}
 	if !reflect.DeepEqual(workflow.Status, wapi.WorkflowStatus{}) {
 		glog.Errorf("Workflow %s/%s created with non empty status. Going to be removed", workflow.Namespace, workflow.Name)
-		key, err := cache.MetaNamespaceKeyFunc(workflow)
-		if err != nil {
-			glog.Errorf("WorkflowController:onAddWorkflow: couldn't get key for Workflow (to be deleted) %s/%s", workflow.Namespace, workflow.Name)
+		if _, err := cache.MetaNamespaceKeyFunc(workflow); err != nil {
+			glog.Errorf("couldn't get key for Workflow (to be deleted) %s/%s: %v", workflow.Namespace, workflow.Name, err)
 			return
 		}
-		w.cleanQueue.Add(key)
+		// TODO: how to remove a workflow created with an invalid or even with a valid status. What in case of error for this delete?
+		if err := w.deleteWorkflow(workflow.Namespace, workflow.Name); err != nil {
+			glog.Errorf("unable to delete non empty status Workflow %s/%s: %v. No retry will be performed.", workflow.Namespace, workflow.Name, err)
+		}
 		return
 	}
 	w.enqueue(workflow)
@@ -345,7 +318,7 @@ func (w *WorkflowController) onAddWorkflow(obj interface{}) {
 func (w *WorkflowController) onUpdateWorkflow(oldObj, newObj interface{}) {
 	workflow, ok := newObj.(*wapi.Workflow)
 	if !ok {
-		glog.Errorf("WorkflowController.onUpdateWorkflow, expected workflow object. Got: %+v", newObj)
+		glog.Errorf("Expected workflow object. Got: %+v", newObj)
 		return
 	}
 	if IsWorkflowFinished(workflow) {
@@ -358,12 +331,12 @@ func (w *WorkflowController) onUpdateWorkflow(oldObj, newObj interface{}) {
 func (w *WorkflowController) onDeleteWorkflow(obj interface{}) {
 	workflow, ok := obj.(*wapi.Workflow)
 	if !ok {
-		glog.Errorf("WorkflowController.onDeleteWorkflow, expected workflow object. Got: %+v", obj)
+		glog.Errorf("Expected workflow object. Got: %+v", obj)
 		return
 	}
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		glog.Errorf("WorkflowController.onDeleteWorkflow, unable to get key for %s/%s:%v", workflow.Namespace, workflow.Name, err)
+		glog.Errorf("Unable to get key for %s/%s: %v", workflow.Namespace, workflow.Name, err)
 		return
 	}
 	w.queue.Add(key)
@@ -377,7 +350,7 @@ func (w *WorkflowController) updateWorkflow(wfl *wapi.Workflow) error {
 		Body(wfl).
 		Do().
 		Error(); err != nil {
-		return fmt.Errorf("unable to update Workflow:%v", err)
+		return fmt.Errorf("unable to update Workflow: %v", err)
 	}
 	glog.V(6).Infof("Workflow %s/%s updated", wfl.ObjectMeta.Namespace, wfl.ObjectMeta.Name)
 	return nil
@@ -390,7 +363,7 @@ func (w *WorkflowController) deleteWorkflow(namespace, name string) error {
 		Resource(wapi.ResourcePlural).
 		Do().
 		Error(); err != nil {
-		return fmt.Errorf("unable to delete Workflow:%v", err)
+		return fmt.Errorf("unable to delete Workflow: %v", err)
 	}
 	glog.V(6).Infof("Workflow %s/%s deleted", namespace, name)
 	return nil
@@ -400,7 +373,7 @@ func (w *WorkflowController) onAddJob(obj interface{}) {
 	job := obj.(*batch.Job)
 	workflows, err := w.getWorkflowsFromJob(job)
 	if err != nil {
-		glog.Errorf("WorkflowController.onAddJob:%v", err)
+		glog.Errorf("unable to get workflows from job %s/%s: %v", job.Namespace, job.Name, err)
 		return
 	}
 	for i := range workflows {
@@ -418,7 +391,7 @@ func (w *WorkflowController) onUpdateJob(oldObj, newObj interface{}) {
 	glog.V(6).Infof("onUpdateJob old=%v, cur=%v ", oldJob.Name, newJob.Name)
 	workflows, err := w.getWorkflowsFromJob(newJob)
 	if err != nil {
-		glog.Errorf("WorkflowController.onUpdateJob cannot get workflows for job %s/%s:%v", newJob.Namespace, newJob.Name, err)
+		glog.Errorf("WorkflowController.onUpdateJob cannot get workflows for job %s/%s: %v", newJob.Namespace, newJob.Name, err)
 		return
 	}
 	for i := range workflows {
@@ -446,7 +419,7 @@ func (w *WorkflowController) onDeleteJob(obj interface{}) {
 	}
 	workflows, err := w.getWorkflowsFromJob(job)
 	if err != nil {
-		glog.Errorf("WorkflowController.onDeleteJob:%v", err)
+		glog.Errorf("WorkflowController.onDeleteJob: %v", err)
 		return
 	}
 	for i := range workflows {
@@ -542,7 +515,7 @@ func (w *WorkflowController) manageWorkflowJobStep(workflow *wapi.Workflow, step
 	glog.V(6).Infof("Workflow %s/%s: All dependecy satisfied for %q", workflow.Namespace, workflow.Name, stepName)
 	jobs, err := w.retrieveJobsStep(workflow, step.JobTemplate, stepName)
 	if err != nil {
-		glog.Errorf("unable to retrieve step jobs for Workflow %s/%s, step:%q:%v", workflow.Namespace, workflow.Name, stepName, err)
+		glog.Errorf("unable to retrieve step jobs for Workflow %s/%s, step:%q: %v", workflow.Namespace, workflow.Name, stepName, err)
 		w.enqueue(workflow)
 		return workflowUpdated
 	}
@@ -600,7 +573,7 @@ func (w *WorkflowController) deleteWorkflowJobs(workflow *wapi.Workflow) error {
 	jobsSelector := inferrWorkflowLabelSelectorForJobs(workflow)
 	jobs, err := w.JobLister.Jobs(workflow.Namespace).List(jobsSelector)
 	if err != nil {
-		return fmt.Errorf("workflow %s/%s, unable to retrieve jobs to remove:%v", workflow.Namespace, workflow.Name, err)
+		return fmt.Errorf("workflow %s/%s, unable to retrieve jobs to remove: %v", workflow.Namespace, workflow.Name, err)
 	}
 	errs := []error{}
 	for i := range jobs {

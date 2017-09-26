@@ -2,7 +2,7 @@ package v1
 
 import "fmt"
 
-// RemoveStepFromSpec remove Step from Workflow Spec
+// RemoveStepFromSpec removes Step from Workflow Spec
 func RemoveStepFromSpec(w *Workflow, stepName string) error {
 	for i := range w.Spec.Steps {
 		if w.Spec.Steps[i].Name == stepName {

@@ -32,5 +32,5 @@ func NewWorkflowControllerConfig() *Config {
 
 // AddFlags add cobra flags to populate Config
 func (c *Config) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&c.KubeConfigFile, "kubeconfig", c.KubeConfigFile, "Location of kubecfg file for access to kubernetes master service; --kube-master-url overrides the URL part of this; if neither this nor --kube-master-url are provided, defaults to service account tokens")
+	fs.StringVar(&c.KubeConfigFile, "kubeconfig", c.KubeConfigFile, "Location of kubecfg file for access to kubernetes master service")
 }

@@ -1,9 +1,6 @@
 package v1
 
 import (
-
-	//"k8s.io/apimachinery/pkg/util/runtime"
-
 	"fmt"
 	"sort"
 
@@ -223,11 +220,11 @@ func ValidateWorkflowSpecUpdate(spec, oldSpec *WorkflowSpec, running, completed 
 // ValidateWorkflowStatus validates status
 func ValidateWorkflowStatus(status *WorkflowStatus, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	//glog.V(6).Infof("Validating WorkflowStatus %v\n", spew.Sdump(*status))
 	//TODO: @sdminonne add status validation
 	return allErrs
 }
 
+// ValidateWorkflowStatusUpdate validates WorkflowStatus during update
 func ValidateWorkflowStatusUpdate(status, oldStatus WorkflowStatus) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, ValidateWorkflowStatus(&status, field.NewPath("status"))...)
