@@ -34,7 +34,7 @@ func RemoveStepFromSpec(w *wapi.Workflow, stepName string) error {
 	return fmt.Errorf("unable to find step %q in workflow", stepName)
 }
 
-// GetStepByName returns a pointer to Workflow Step
+// GetStepByName returns a pointer to WorkflowStep
 func GetStepByName(w *wapi.Workflow, stepName string) *wapi.WorkflowStep {
 	for i := range w.Spec.Steps {
 		if w.Spec.Steps[i].Name == stepName {
@@ -44,7 +44,7 @@ func GetStepByName(w *wapi.Workflow, stepName string) *wapi.WorkflowStep {
 	return nil
 }
 
-// GetStepStatusByName returns a pointer to Workflow Step
+// GetStepStatusByName return a pointer to WorkflowStepStatus
 func GetStepStatusByName(w *wapi.Workflow, stepName string) *wapi.WorkflowStepStatus {
 	for i := range w.Status.Statuses {
 		if w.Status.Statuses[i].Name == stepName {

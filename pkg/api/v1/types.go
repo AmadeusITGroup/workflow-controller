@@ -34,7 +34,7 @@ type Workflow struct {
 	// Spec represents the desired behaviour of the Workflow.
 	Spec WorkflowSpec `json:"spec,omitempty"`
 
-	// Status contains the current status of the Workflow
+	// Status contains the current status off the Workflow
 	Status WorkflowStatus `json:"status,omitempty"`
 }
 
@@ -106,9 +106,6 @@ type WorkflowCondition struct {
 
 // WorkflowStatus represents the status of Workflow
 type WorkflowStatus struct {
-	// Validated is set to true if the Workflow Spec is valid.
-	Validated bool `json:"validated"`
-
 	// Conditions represent the latest available observations of an object's current state.
 	Conditions []WorkflowCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 

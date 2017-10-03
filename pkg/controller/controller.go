@@ -209,8 +209,7 @@ func (w *WorkflowController) sync(key string) error {
 	}
 	sharedWorkflow := obj.(*wapi.Workflow)
 	// Defaulting...
-	if !sharedWorkflow.Status.Validated && // a Workflow validated has been already defaulted
-		!wapi.IsWorkflowDefaulted(sharedWorkflow) {
+	if !wapi.IsWorkflowDefaulted(sharedWorkflow) {
 		defaultedWorkflow := wapi.DefaultWorkflow(sharedWorkflow)
 		if err := w.updateHandler(defaultedWorkflow); err != nil {
 			glog.Errorf("WorkflowController.sync unable to default Workflow %s/%s: %v", namespace, name, err)
@@ -220,7 +219,7 @@ func (w *WorkflowController) sync(key string) error {
 		return nil
 	}
 
-	// Validation...
+	// Validation. We always revalidate Workflow since any update must be re-checked.
 	if errs := wapi.ValidateWorkflow(sharedWorkflow); errs != nil && len(errs) > 0 {
 		glog.Errorf("WorkflowController.sync Worfklow %s/%s not valid: %v", namespace, name, errs)
 		if w.config.RemoveIvalidWorkflow {
@@ -235,26 +234,16 @@ func (w *WorkflowController) sync(key string) error {
 
 	workflow := sharedWorkflow.DeepCopy()
 
-	// Only valid workflow should follow this point
-	if !workflow.Status.Validated {
-		workflow.Status.Validated = true
-		if err := w.updateHandler(workflow); err != nil {
-			glog.Errorf("WorkflowController.sync Workflow %s/%s unable to set status.Validated to true: %v", namespace, name, err)
-			return fmt.Errorf("unable to set status.Validated to true:%s/%s: %v", namespace, name, err)
-		}
-		return nil
-	}
-
 	// Init status.StartTime
 	if workflow.Status.StartTime == nil {
 		workflow.Status.Statuses = make([]wapi.WorkflowStepStatus, 0)
 		now := metav1.Now()
 		workflow.Status.StartTime = &now
 		if err := w.updateHandler(workflow); err != nil {
-			glog.Errorf("WorkflowController.sync Workflow %s/%s unable init startTime: %v", namespace, name, err)
+			glog.Errorf("workflow %s/%s: unable init startTime: %v", namespace, name, err)
 			return err
 		}
-		glog.V(4).Infof("WorkflowController.sync Workflow %s/%s startTime updated", namespace, name)
+		glog.V(4).Infof("workflow %s/%s: startTime updated", namespace, name)
 		return nil
 	}
 
@@ -263,12 +252,12 @@ func (w *WorkflowController) sync(key string) error {
 		workflow.Status.Conditions = append(workflow.Status.Conditions, newDeadlineExceededCondition())
 		workflow.Status.CompletionTime = &now
 		if err := w.updateHandler(workflow); err != nil {
-			glog.Errorf("Workflow %s/%s unable to set DeadlineExceeded: %v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
+			glog.Errorf("workflow %s/%s unable to set DeadlineExceeded: %v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
 			return fmt.Errorf("unable to set DeadlineExceeded for Workflow %s/%s: %v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
 		}
 		if err := w.deleteWorkflowJobs(workflow); err != nil {
-			glog.Errorf("Workflow %s/%s unable to cleanup jobs: %v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
-			return fmt.Errorf("unable to cleanup jobs for %s/%s: %v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
+			glog.Errorf("workflow %s/%s: unable to cleanup jobs: %v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
+			return fmt.Errorf("workflow %s/%s: unable to cleanup jobs: %v", workflow.ObjectMeta.Namespace, workflow.ObjectMeta.Name, err)
 		}
 		return nil
 	}
@@ -297,11 +286,11 @@ func newCondition(conditionType wapi.WorkflowConditionType, reason, message stri
 func (w *WorkflowController) onAddWorkflow(obj interface{}) {
 	workflow, ok := obj.(*wapi.Workflow)
 	if !ok {
-		glog.Errorf("WorkflowController.onAddWorkflow, expected workflow object. Got: %+v", obj)
+		glog.Errorf("adding workflow, expected workflow object. Got: %+v", obj)
 		return
 	}
 	if !reflect.DeepEqual(workflow.Status, wapi.WorkflowStatus{}) {
-		glog.Errorf("Workflow %s/%s created with non empty status. Going to be removed", workflow.Namespace, workflow.Name)
+		glog.Errorf("workflow %s/%s created with non empty status. Going to be removed", workflow.Namespace, workflow.Name)
 		if _, err := cache.MetaNamespaceKeyFunc(workflow); err != nil {
 			glog.Errorf("couldn't get key for Workflow (to be deleted) %s/%s: %v", workflow.Namespace, workflow.Name, err)
 			return
@@ -322,7 +311,7 @@ func (w *WorkflowController) onUpdateWorkflow(oldObj, newObj interface{}) {
 		return
 	}
 	if IsWorkflowFinished(workflow) {
-		glog.Warning("Update event received on complete Workflow:%s/%s", workflow.Namespace, workflow.Name)
+		glog.Warningf("Update event received on complete Workflow: %s/%s", workflow.Namespace, workflow.Name)
 		return
 	}
 	w.enqueue(workflow)
@@ -545,12 +534,15 @@ func (w *WorkflowController) manageWorkflowJobStep(workflow *wapi.Workflow, step
 				Name:      stepName,
 				Complete:  jobFinished,
 				Reference: *reference})
-		} else {
-			stepStatus.Complete = jobFinished
+			workflowUpdated = true
 		}
-		workflowUpdated = true
+		if jobFinished {
+			stepStatus.Complete = jobFinished
+			glog.V(4).Infof("Workflow %s/%s Job finished for step %q", workflow.Namespace, workflow.Name, stepName)
+			workflowUpdated = true
+		}
 	default: // reconciliate
-		glog.Errorf("Workflow.manageWorkflowJobStep %v too many jobs reported... Need reconciliation", workflow.Name)
+		glog.Errorf("manageWorkflowJobStep %v too many jobs reported... Need reconciliation", workflow.Name)
 		return false
 	}
 	return workflowUpdated
