@@ -17,14 +17,11 @@ limitations under the License.
 package main
 
 import (
+	goflag "flag"
 	"runtime"
 
-	"github.com/spf13/pflag"
-
-	"k8s.io/kubernetes/pkg/util/flag"
-	"k8s.io/kubernetes/pkg/util/logs"
-
 	"github.com/sdminonne/workflow-controller/app"
+	"github.com/spf13/pflag"
 )
 
 func main() {
@@ -33,11 +30,11 @@ func main() {
 	config := app.NewWorkflowControllerConfig()
 	config.AddFlags(pflag.CommandLine)
 
-	flag.InitFlags()
-	logs.InitLogs()
-	defer logs.FlushLogs()
+	// workaround for kubernetes/kubernetes/#17162
+	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
+	pflag.Parse()
+	goflag.CommandLine.Parse([]string{})
 
 	a := app.NewWorkflowController(config)
 	a.Run()
-
 }

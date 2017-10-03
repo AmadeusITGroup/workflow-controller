@@ -1,5 +1,5 @@
+apiVersion: "dag.example.com/v1"
 kind: Workflow
-apiVersion: "example.com/v1"
 metadata:
   name: hello-workflow
 spec:
@@ -10,19 +10,34 @@ spec:
       workflow: hello
   steps:
   - name: one
-    spec:
-      template:
-        metadata:
-          name: step_one
-          labels:
-            workflow: step_one
-        spec:
-          restartPolicy: Never
-          dnsPolicy: Default
-          containers:
-            - name: step-one-wait-and-exit
-              image: gcr.io/google_containers/busybox
-              command: ["sh", "-c", "echo Starting on: $(date); sleep 5; echo Goodbye cruel world at: $(date)"]
-
+      spec:
+        template:
+          metadata:
+            name: step_one
+            labels:
+              workflow: step_one
+          spec:
+            restartPolicy: Never
+            dnsPolicy: Default
+            containers:
+              - name: step-one-wait-and-exit
+                image: gcr.io/google-containers/busybox
+                command: ["sh", "-c", "echo Starting on: $(date); sleep 5; echo Goodbye cruel world at: $(date)"]
+  - name: two
+      spec:
+        template:
+          metadata:
+            name: step_two
+            labels:
+              workflow: step_two
+          spec:
+            restartPolicy: Never
+            dnsPolicy: Default
+            containers:
+              - name: step-two-wait-and-exit
+                image: gcr.io/google_containers/busybox
+                command: ["sh", "-c", "echo Starting on: $(date); sleep 5; echo Goodbye cruel world at: $(date)"]
+    dependencies:
+      - one
 
 #Invalid Wokrkflow missing jobTemplate

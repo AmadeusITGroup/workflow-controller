@@ -3,25 +3,27 @@ package e2e
 import (
 	"fmt"
 
+	api "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"k8s.io/kubernetes/pkg/api"
-
-	wapi "github.com/sdminonne/workflow-controller/pkg/api"
-	"github.com/sdminonne/workflow-controller/pkg/client"
-	"github.com/sdminonne/workflow-controller/pkg/workflow"
+	wapi "github.com/sdminonne/workflow-controller/pkg/api/v1"
+	"github.com/sdminonne/workflow-controller/pkg/controller"
 	"github.com/sdminonne/workflow-controller/test/e2e/framework"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 )
 
-func deleteWorkflow(workflowClient client.Interface, workflow *wapi.Workflow) {
-	workflowClient.Workflows(workflow.Namespace).Delete(workflow.Name, nil)
+func deleteWorkflow(workflowClient *rest.RESTClient, workflow *wapi.Workflow) {
+	result := wapi.Workflow{}
+	workflowClient.Delete().Resource(wapi.ResourcePlural).Namespace(workflow.Namespace).Do().Into(&result)
 	By("Workflow deleted")
 }
 
 func deleteAllJobs(kubeClient clientset.Interface, workflow *wapi.Workflow) {
-	jobs, err := kubeClient.Batch().Jobs(workflow.Namespace).List(api.ListOptions{})
+	jobs, err := kubeClient.Batch().Jobs(workflow.Namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return
 	}
@@ -36,71 +38,175 @@ var _ = Describe("Workflow CRUD", func() {
 	It("should create a workflow", func() {
 		workflowClient, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
-		myWorkflow := framework.NewWorkflow(framework.FrameworkContext.ResourceGroup, framework.FrameworkContext.ResourceVersion, "hello-workflow", ns, nil)
-		Eventually(func() error {
-			_, err := workflowClient.Workflows(ns).Create(myWorkflow)
-			return err
-		}, "5s", "1s").ShouldNot(HaveOccurred())
-		framework.Logf("Workflow is created")
+		myWorkflow := framework.NewWorkflow("dag.example.com", "v1", "workflow1", ns, nil)
 		defer func() {
 			deleteWorkflow(workflowClient, myWorkflow)
 			deleteAllJobs(kubeClient, myWorkflow)
 		}()
 
+		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+
+		Eventually(framework.HOIsWorkflowStarted(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+	})
+
+	It("should default workflow", func() {
+		workflowClient, kubeClient := framework.BuildAndSetClients()
+		ns := api.NamespaceDefault
+		myWorkflow := framework.NewWorkflow("dag.example.com", "v1", "workflow2", ns, nil)
+		defer func() {
+			deleteWorkflow(workflowClient, myWorkflow)
+			deleteAllJobs(kubeClient, myWorkflow)
+		}()
+		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+
 		Eventually(func() error {
-			curr, err := workflowClient.Workflows(ns).Get(myWorkflow.Name)
+			workflows := wapi.WorkflowList{}
+			err := workflowClient.Get().Resource(wapi.ResourcePlural).Namespace(ns).Do().Into(&workflows)
 			if err != nil {
+				framework.Logf("Cannot list workflows:%v", err)
 				return err
 			}
-			if workflow.IsWorkflowFinished(curr) {
+			if len(workflows.Items) != 1 {
+				return fmt.Errorf("Expected only 1 workflows got %d", len(workflows.Items))
+			}
+			if wapi.IsWorkflowDefaulted(&workflows.Items[0]) {
 				return nil
 			}
-			framework.Logf("Workflow not yet finished %v", curr)
-			return fmt.Errorf("workflow %s not finished", myWorkflow.Name)
+			framework.Logf("Workflow %s not defaulted", myWorkflow.Name)
+			return fmt.Errorf("workflow %s not defaulted", myWorkflow.Name)
 		}, "40s", "5s").ShouldNot(HaveOccurred())
+	})
 
+	It("should run to finish a workflow", func() {
+		workflowClient, kubeClient := framework.BuildAndSetClients()
+		ns := api.NamespaceDefault
+		myWorkflow := framework.NewWorkflow("dag.example.com", "v1", "workflow1", ns, nil)
+		defer func() {
+			deleteWorkflow(workflowClient, myWorkflow)
+			deleteAllJobs(kubeClient, myWorkflow)
+		}()
+		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+
+		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+	})
+
+	It("should be able to update workflow", func() {
+		workflowClient, kubeClient := framework.BuildAndSetClients()
+		ns := api.NamespaceDefault
+		myWorkflow := framework.NewWorkflowWithThreeSteps("dag.example.com", "v1", "workflow3", ns)
+		defer func() {
+			deleteWorkflow(workflowClient, myWorkflow)
+			deleteAllJobs(kubeClient, myWorkflow)
+		}()
+
+		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+
+		Eventually(framework.HOIsWorkflowStarted(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+
+		// Edit Workflow adding a step "four"
+		Eventually(func() error {
+			workflows := wapi.WorkflowList{}
+			err := workflowClient.Get().Resource(wapi.ResourcePlural).Namespace(ns).Do().Into(&workflows)
+			if err != nil {
+				framework.Logf("Cannot list workflows:%v", err)
+				return err
+			}
+			if len(workflows.Items) != 1 {
+				return fmt.Errorf("Expected only 1 workflows got %d", len(workflows.Items))
+			}
+			workflow := workflows.Items[0].DeepCopy()
+			step4 := framework.NewWorkflowStep("four", []string{"three"})
+			workflow.Spec.Steps = append(workflow.Spec.Steps, *step4)
+			result := wapi.Workflow{}
+			if err := workflowClient.Put().Resource(wapi.ResourcePlural).Namespace(ns).Name(workflow.Name).Body(workflow).Do().Into(&result); err != nil {
+				return fmt.Errorf("unable to update workflow %s/%s: %v", workflow.Namespace, workflow.Name, err)
+			}
+			framework.Logf("workflow update")
+			return nil
+		}, "40s", "1s").ShouldNot(HaveOccurred())
+
+		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+
+		Eventually(func() error { // Now checks if it finished and updated step finished too
+			workflows := wapi.WorkflowList{}
+			err := workflowClient.Get().Resource(wapi.ResourcePlural).Namespace(ns).Do().Into(&workflows)
+			if err != nil {
+				framework.Logf("Cannot list workflows:%v", err)
+				return err
+			}
+			if len(workflows.Items) != 1 {
+				return fmt.Errorf("Expected only 1 workflows got %d", len(workflows.Items))
+			}
+			w := workflows.Items[0]
+			if stepStatusFour := controller.GetStepStatusByName(&w, "four"); stepStatusFour != nil && stepStatusFour.Complete {
+				framework.Logf("Workflow %s finished and updated", myWorkflow.Name)
+				return nil
+			}
+			return fmt.Errorf("couldn't get step four for %s", myWorkflow.Name)
+		}, "40s", "5s").ShouldNot(HaveOccurred())
 	})
 
 	It("should exceed deadline", func() {
 		workflowClient, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
-		deadline := int64(3)
-		myWorkflow := framework.NewWorkflow(framework.FrameworkContext.ResourceGroup, framework.FrameworkContext.ResourceVersion, "mydag", ns, &deadline)
+		myWorkflow := framework.NewWorkflow("dag.example.com", "v1", "deadlineworkflow", ns, nil)
+		threeSecs := int64(3)
+		myWorkflow.Spec.ActiveDeadlineSeconds = &threeSecs // Set deadline
+		defer func() {
+			deleteWorkflow(workflowClient, myWorkflow)
+			deleteAllJobs(kubeClient, myWorkflow)
+		}()
+		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+
+		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+
 		Eventually(func() error {
-			_, err := workflowClient.Workflows(ns).Create(myWorkflow)
-			return err
-		}, "5s", "1s").ShouldNot(HaveOccurred())
-		framework.Logf("Workflow is created")
+			workflows := wapi.WorkflowList{}
+			err := workflowClient.Get().Resource(wapi.ResourcePlural).Namespace(ns).Do().Into(&workflows)
+			if err != nil {
+				framework.Logf("Cannot list workflows:%v", err)
+				return err
+			}
+			if len(workflows.Items) != 1 {
+				return fmt.Errorf("Expected only 1 workflows got %d", len(workflows.Items))
+			}
+			if framework.IsWorkflowFailedDueDeadline(&workflows.Items[0]) {
+				framework.Logf("Workflow %s finished due deadline", myWorkflow.Name)
+				return nil
+			}
+			return fmt.Errorf("workflow %s not finished to deadline", myWorkflow.Name)
+		}, "40s", "1s").ShouldNot(HaveOccurred())
+	})
+
+	It("should remove an invalid workflow", func() {
+		workflowClient, kubeClient := framework.BuildAndSetClients()
+		ns := api.NamespaceDefault
+		myWorkflow := framework.NewWorkflowWithLoop("dag.example.com", "v1", "loopworkflow", ns)
 
 		defer func() {
 			deleteWorkflow(workflowClient, myWorkflow)
 			deleteAllJobs(kubeClient, myWorkflow)
 		}()
 
-		Eventually(func() error {
-			curr, err := workflowClient.Workflows(ns).Get(myWorkflow.Name)
-			if err != nil {
-				return err
-			}
-			if workflow.IsWorkflowFinished(curr) {
-				for i := range curr.Status.Conditions {
-					fmt.Printf("Condition Reason -> %s", curr.Status.Conditions[i].Reason)
-					if curr.Status.Conditions[i].Reason == "DeadlineExceeded" {
-						return nil
-					}
-				}
-				return fmt.Errorf("Workflow finished but not deadline exceeded")
-			}
-			framework.Logf("Workflow not yet finished %v", curr)
-			return fmt.Errorf("workflow %s not finished", myWorkflow.Name)
-		}, "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+
+		Eventually(framework.HONoWorkflowsShouldRemains(workflowClient, ns), "40s", "1s").ShouldNot(HaveOccurred())
 	})
 
-	/*
-		It("should check defaulting", func() {
-			//workflowClient, kubeClient := framework.BuildAndSetClients()
-			//fmt.Printf("%v %v\n", workflowClient, kubeClient)
-			//fmt.Printf("Three!!")
-		})
-	*/
+	It("should remove workflow created non empty status", func() {
+		workflowClient, kubeClient := framework.BuildAndSetClients()
+		ns := api.NamespaceDefault
+		myWorkflow := framework.NewWorkflow("dag.example.com", "v1", "nonemptystatus", ns, nil)
+		now := metav1.Now()
+		myWorkflow.Status = wapi.WorkflowStatus{ // add a non empty status
+			StartTime: &now,
+		}
+		defer func() {
+			deleteWorkflow(workflowClient, myWorkflow)
+			deleteAllJobs(kubeClient, myWorkflow)
+		}()
+		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+
+		Eventually(framework.HONoWorkflowsShouldRemains(workflowClient, ns), "40s", "1s").ShouldNot(HaveOccurred())
+	})
 })

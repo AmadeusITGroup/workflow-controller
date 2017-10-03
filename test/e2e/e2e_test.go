@@ -1,10 +1,12 @@
 package e2e
 
 import (
-	"flag"
-	"fmt"
+	goflag "flag"
 	"os"
 	"testing"
+
+	"github.com/sdminonne/workflow-controller/test/e2e/framework"
+	"github.com/spf13/pflag"
 )
 
 func TestE2E(t *testing.T) {
@@ -12,7 +14,11 @@ func TestE2E(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	fmt.Printf("TestMain\n")
-	flag.Parse()
+
+	pflag.StringVar(&framework.FrameworkContext.KubeConfigPath, "kubeconfig", "", "Path to kubeconfig")
+	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
+	pflag.Parse()
+	goflag.CommandLine.Parse([]string{})
+
 	os.Exit(m.Run())
 }

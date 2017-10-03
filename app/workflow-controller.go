@@ -17,69 +17,68 @@ limitations under the License.
 package app
 
 import (
-	"math/rand"
-	"net/http"
-	"time"
+	"context"
 
 	"github.com/golang/glog"
-	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
-	"k8s.io/kubernetes/pkg/util/wait"
+
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	wclient "github.com/sdminonne/workflow-controller/pkg/client"
-	"github.com/sdminonne/workflow-controller/pkg/workflow"
+	"github.com/sdminonne/workflow-controller/pkg/controller"
 )
 
 // WorkflowController contains all info to run the worklow controller app
 type WorkflowController struct {
-	controller *workflow.Controller
+	controller *controller.WorkflowController
+}
+
+func initKubeConfig(c *Config) (*rest.Config, error) {
+	if len(c.KubeConfigFile) > 0 {
+		return clientcmd.BuildConfigFromFlags("", c.KubeConfigFile) // out of cluster config
+	}
+	return rest.InClusterConfig()
 }
 
 // NewWorkflowController  initializes and returns a ready to run WorkflowController
 func NewWorkflowController(c *Config) *WorkflowController {
-	kubeconfig, err := clientcmd.BuildConfigFromFlags(c.KubeMasterURL, c.KubeConfigFile)
+	kubeConfig, err := initKubeConfig(c)
 	if err != nil {
-		glog.Fatalf("Unable to start workflow controller: %v", err)
+		glog.Fatalf("Unable to init workflow controller: %v", err)
 	}
 
-	kubeClient := clientset.NewForConfigOrDie(restclient.AddUserAgent(kubeconfig, "workflow-controller"))
-	thirdPartyResource := &extensions.ThirdPartyResource{}
-	stopChannel := make(chan struct{})
-	wait.Until(func() {
-		thirdPartyResource, err = wclient.RegisterWorkflow(kubeClient, c.ResourceName, c.ResourceDomain, c.ResourceVersions)
-		if err == nil {
-			glog.V(2).Infof("ThirdPartyResource %v.%v versions %v created", c.ResourceName, c.ResourceDomain, c.ResourceVersions)
-			close(stopChannel)
-		} else {
-			status, ok := err.(*errors.StatusError)
-			switch {
-			case ok && status.Status().Code == http.StatusConflict: // TODO @sdminonne: handle errors in case resource is there and there's a version conflict
-				glog.Warningf("ThirdPartyResource  %v.%v versions %v already registered", c.ResourceName, c.ResourceDomain, c.ResourceVersions)
-				close(stopChannel)
-			case !ok:
-				glog.Errorf("Unable to fetch information from error: %v", err)
-			default:
-				glog.Errorf("Unable to register ThirdPartyResource %v.%v version %v: %v", c.ResourceName, c.ResourceDomain, c.ResourceVersions, err.Error())
-			}
-		}
-	}, 1*time.Second, stopChannel)
-
-	wfClient := wclient.NewForConfigOrDie(thirdPartyResource, kubeconfig)
-	resyncPeriod := func() time.Duration {
-		factor := rand.Float64() + 1
-		return time.Duration(float64(time.Hour) * 12.0 * factor)
+	apiextensionsclientset, err := apiextensionsclient.NewForConfig(kubeConfig)
+	if err != nil {
+		glog.Fatalf("Unable to init clientset from kubeconfig:%v", err)
+	}
+	_, err = wclient.DefineWorklowResource(apiextensionsclientset)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		glog.Fatalf("Unable to define Workflow resource:%v", err)
+	}
+	workflowClient, workflowScheme, err := wclient.NewClient(kubeConfig)
+	if err != nil {
+		glog.Fatalf("Unable to initialize a WorkflowClient:%v", err)
 	}
 
-	glog.V(4).Infof("Creating workflow controller...")
-	controller := workflow.NewController(kubeClient, wfClient, thirdPartyResource, resyncPeriod)
-	return &WorkflowController{controller: controller}
+	kubeclient, err := clientset.NewForConfig(kubeConfig)
+	if err != nil {
+		glog.Fatalf("Unable to initialize kubeClient:%v", err)
+	}
+
+	return &WorkflowController{
+		controller: controller.NewWorkflowController(workflowClient, workflowScheme, kubeclient),
+	}
 }
 
 // Run executes the WorkflowController
 func (c *WorkflowController) Run() {
-	glog.Infof("Starting workflow controller")
-	c.controller.Run(1, wait.NeverStop)
+	if c.controller != nil {
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
+		c.controller.Run(ctx)
+	}
 }

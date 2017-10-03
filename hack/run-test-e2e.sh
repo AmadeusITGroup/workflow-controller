@@ -23,12 +23,11 @@ command -v kubectl >/dev/null 2>&1 || { echo >&2 "kubectl not found in path. Abo
 
 pushd ${ROOT}/test/e2e
 echo "compile tests..."
-go test -c
+go test -c .
 popd
 
+#TODO:
+#  - check if kubeconfig is there
+#  - check if cluster is up
 
-#TODO fetch the host via jsonpath with
-context=$(kubectl config view -ojsonpath='{.current-context}')
-httphost=$(kubectl config view --output=jsonpath='{.clusters[?(@.name=="'${context}'")].cluster.server}')
-
-./test/e2e/e2e.test --host=${httphost##http:///} --kubeconfig=$HOME/.kube/config --group=example.com --name=workflow --version=v1
+./test/e2e/e2e.test --kubeconfig=$HOME/.kube/config
