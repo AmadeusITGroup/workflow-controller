@@ -1,0 +1,24 @@
+language: go
+os: linux
+sudo: required
+services:
+  - docker
+go:
+  - 1.8.3
+go_import_path: github.com/sdminonne/workflow-controller
+install:
+  - curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
+  - mkdir -p .bin; mv ./kubectl .bin/kubectl && chmod +x .bin/kubectl
+  - export PATH="$TRAVIS_BUILD_DIR/.bin:$PATH"
+  - wget https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.7.sh && chmod +x dind-cluster-v1.7.sh && ./dind-cluster-v1.7.sh up
+  - export PATH="$HOME/.kubeadm-dind-cluster:$PATH"
+
+script:
+  - make build
+  - make test
+  - make container
+  - kubectl create -f deployment/k8s/workflow-controller_allinone.yaml
+  - while [ $(kubectl get pod --selector=app=workflow-controller | grep 'workflow-controller' | awk '{print $3}') != "Running" ]; do echo "$(kubectl get pod --selector=app=workflow-controller)"; sleep 5; done
+  - cd ./test/e2e && go test -c && ./e2e.test --kubeconfig=$HOME/.kube/config --ginkgo.slowSpecThreshold 30
+after_success:
+  #- bash <(curl -s https://codecov.io/bash)
