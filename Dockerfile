@@ -13,6 +13,6 @@
 # limitations under the License.
 
 FROM busybox
-MAINTAINER salvatore-dario.minonne@amadeus.com
+LABEL maintainer "salvatore-dario.minonne@amadeus.com"
 ADD workflow-controller /workflow-controller
 ENTRYPOINT ["/workflow-controller"]

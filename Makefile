@@ -32,10 +32,13 @@ ${ARTIFACT}: ${SOURCES}
 container: build
 	docker build -t $(PREFIX):$(TAG) .
 
+test:
+	go test -cover ./app/... ./pkg/...
+
 push: container
 	docker push $(PREFIX):$(TAG)
 
 clean:
 	rm -f ${ARTIFACT}
 
-.PHONY: build push clean
+.PHONY: build push clean test
