@@ -1,4 +1,4 @@
-# workflow-controller
+# workflow-controller [![Build Status](https://travis-ci.org/sdminonne/workflow-controller.svg?branch=master)](https://travis-ci.org/sdminonne/workflow-controller)
 Kubernetes workflow controller
 
 ## Running workflow-controller
