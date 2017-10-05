@@ -21,4 +21,4 @@ script:
   - while [ $(kubectl get pod --selector=app=workflow-controller | grep 'workflow-controller' | awk '{print $3}') != "Running" ]; do echo "$(kubectl get pod --selector=app=workflow-controller)"; sleep 5; done
   - cd ./test/e2e && go test -c && ./e2e.test --kubeconfig=$HOME/.kube/config --ginkgo.slowSpecThreshold 30
 after_success:
-  #- bash <(curl -s https://codecov.io/bash)
+  - bash <(curl -s https://codecov.io/bash)
