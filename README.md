@@ -1,5 +1,9 @@
-# workflow-controller [![Build Status](https://travis-ci.org/sdminonne/workflow-controller.svg?branch=master)](https://travis-ci.org/sdminonne/workflow-controller)
-Kubernetes workflow controller
+# workflow-controller
+[![Build Status](https://travis-ci.org/sdminonne/workflow-controller.svg?branch=master)](https://travis-ci.org/sdminonne/workflow-controller)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sdminonne/workflow-controller)](https://goreportcard.com/report/github.com/sdminonne/workflow-controller)
+[![codecov](https://codecov.io/gh/sdminonne/workflow-controller/branch/master/graph/badge.svg)](https://codecov.io/gh/sdminonne/workflow-controller)
+
+A simple Kubernetes workflow controller. TODO: add more explanations.
 
 ## Running workflow-controller
 
