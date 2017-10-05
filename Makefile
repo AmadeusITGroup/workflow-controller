@@ -33,7 +33,7 @@ container: build
 	docker build -t $(PREFIX):$(TAG) .
 
 test:
-	go test -cover ./app/... ./pkg/...
+	./go.test.sh
 
 push: container
 	docker push $(PREFIX):$(TAG)
