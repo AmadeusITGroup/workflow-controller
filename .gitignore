@@ -39,3 +39,5 @@ workflow-controller
 *.un~
 Session.vim
 .netrwhist
+
+coverage.txt
