@@ -18,23 +18,28 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"github.com/golang/glog"
 
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
+	kubeinformers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	wclient "github.com/sdminonne/workflow-controller/pkg/client"
+	winformers "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions"
 	"github.com/sdminonne/workflow-controller/pkg/controller"
 )
 
 // WorkflowController contains all info to run the worklow controller app
 type WorkflowController struct {
-	controller *controller.WorkflowController
+	kubeInformerFactory     kubeinformers.SharedInformerFactory
+	workflowInformerFactory winformers.SharedInformerFactory
+	controller              *controller.WorkflowController
 }
 
 func initKubeConfig(c *Config) (*rest.Config, error) {
@@ -59,18 +64,23 @@ func NewWorkflowController(c *Config) *WorkflowController {
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		glog.Fatalf("Unable to define Workflow resource:%v", err)
 	}
-	workflowClient, workflowScheme, err := wclient.NewClient(kubeConfig)
+	workflowClient, err := wclient.NewClient(kubeConfig)
 	if err != nil {
 		glog.Fatalf("Unable to initialize a WorkflowClient:%v", err)
 	}
 
-	kubeclient, err := clientset.NewForConfig(kubeConfig)
+	kubeClient, err := clientset.NewForConfig(kubeConfig)
 	if err != nil {
 		glog.Fatalf("Unable to initialize kubeClient:%v", err)
 	}
 
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	workflowInformerFactory := winformers.NewSharedInformerFactory(workflowClient, time.Second*30)
+
 	return &WorkflowController{
-		controller: controller.NewWorkflowController(workflowClient, workflowScheme, kubeclient),
+		kubeInformerFactory:     kubeInformerFactory,
+		workflowInformerFactory: workflowInformerFactory,
+		controller:              controller.NewWorkflowController(workflowClient, kubeClient, kubeInformerFactory, workflowInformerFactory),
 	}
 }
 
@@ -79,6 +89,8 @@ func (c *WorkflowController) Run() {
 	if c.controller != nil {
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		defer cancelFunc()
+		c.kubeInformerFactory.Start(ctx.Done())
+		c.workflowInformerFactory.Start(ctx.Done())
 		c.controller.Run(ctx)
 	}
 }

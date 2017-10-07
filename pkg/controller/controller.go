@@ -15,25 +15,25 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apimachinery/pkg/watch"
 
+	kubeinformers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	batchv1listers "k8s.io/client-go/listers/batch/v1"
-	v1 "k8s.io/client-go/listers/batch/v1"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/workqueue"
 
-	wapi "github.com/sdminonne/workflow-controller/pkg/api/v1"
+	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
+
+	winformers "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions"
+	wlisters "github.com/sdminonne/workflow-controller/pkg/client/listers/workflow/v1"
+	wclientset "github.com/sdminonne/workflow-controller/pkg/client/versioned"
 )
 
 // WorkflowControllerConfig contains info to customize Workflow controller behaviour
@@ -50,16 +50,14 @@ const (
 
 // WorkflowController represents the Workflow controller
 type WorkflowController struct {
-	WorkflowClient *rest.RESTClient
-	WorkflowScheme *runtime.Scheme
+	WorkflowClient wclientset.Interface
+	KubeClient     clientset.Interface
 
-	KubeClient       clientset.Interface
-	workflowStore    cache.Store
-	workflowInformer cache.Controller
+	WorkflowLister wlisters.WorkflowLister
+	WorkflowSynced cache.InformerSynced
 
-	JobInformer    cache.SharedIndexInformer
-	JobLister      batchv1listers.JobLister
-	JobStoreSynced cache.InformerSynced // returns true if job has been synced. Added as member for testing
+	JobLister batchv1listers.JobLister
+	JobSynced cache.InformerSynced // returns true if job has been synced. Added as member for testing
 
 	JobControl JobControlInterface
 
@@ -72,32 +70,37 @@ type WorkflowController struct {
 	config WorkflowControllerConfig
 }
 
-// NewWorkflowController creates and initializes the WorklfowController instance
-func NewWorkflowController(workflowClient *rest.RESTClient, workflowScheme *runtime.Scheme, kubeClient clientset.Interface) *WorkflowController {
+// NewWorkflowController creates and initializes the WorkflowController instance
+func NewWorkflowController(
+	workflowClient wclientset.Interface,
+	kubeClient clientset.Interface,
+	kubeInformerFactory kubeinformers.SharedInformerFactory,
+	workflowInformerFactory winformers.SharedInformerFactory) *WorkflowController {
+
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.Core().RESTClient()).Events("")})
 
+	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
+	workflowInformer := workflowInformerFactory.Workflow().V1().Workflows()
+
 	wc := &WorkflowController{
 		WorkflowClient: workflowClient,
-		WorkflowScheme: workflowScheme,
 		KubeClient:     kubeClient,
-		queue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "workflow"),
+		WorkflowLister: workflowInformer.Lister(),
+		WorkflowSynced: workflowInformer.Informer().HasSynced,
+		JobLister:      jobInformer.Lister(),
+		JobSynced:      jobInformer.Informer().HasSynced,
+
+		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "workflow"),
 		config: WorkflowControllerConfig{
 			RemoveIvalidWorkflow: true,
 			NumberOfThreads:      1,
 		},
+
 		Recorder: eventBroadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{Component: "workflow-controller"}),
 	}
-	wc.workflowStore, wc.workflowInformer = cache.NewInformer(
-		cache.NewListWatchFromClient(
-			workflowClient,
-			wapi.ResourcePlural,
-			apiv1.NamespaceAll,
-			fields.Everything(),
-		),
-		&wapi.Workflow{},
-		time.Duration(2*time.Minute),
+	workflowInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    wc.onAddWorkflow,
 			UpdateFunc: wc.onUpdateWorkflow,
@@ -105,42 +108,24 @@ func NewWorkflowController(workflowClient *rest.RESTClient, workflowScheme *runt
 		},
 	)
 
-	wc.JobControl = &WorkflowJobControl{kubeClient, wc.Recorder}
-
-	wc.JobInformer = cache.NewSharedIndexInformer(
-		&cache.ListWatch{
-			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return wc.KubeClient.BatchV1().Jobs(apiv1.NamespaceAll).List(options)
-			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return wc.KubeClient.BatchV1().Jobs(apiv1.NamespaceAll).Watch(options)
-			},
-		},
-		&batch.Job{},
-		time.Duration(1*time.Minute),
-		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-
-	wc.JobInformer.AddEventHandler(
+	jobInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    wc.onAddJob,
 			UpdateFunc: wc.onUpdateJob,
 			DeleteFunc: wc.onDeleteJob,
-		})
-
-	wc.JobLister = v1.NewJobLister(wc.JobInformer.GetIndexer())
+		},
+	)
+	wc.JobControl = &WorkflowJobControl{kubeClient, wc.Recorder}
 	wc.updateHandler = wc.updateWorkflow
 
 	return wc
 }
 
-// Run simply runs the controller
+// Run simply runs the controller. Assuming Informers are already running: via factories
 func (w *WorkflowController) Run(ctx context.Context) error {
 	glog.Infof("Starting workflow controller")
 
-	go w.JobInformer.Run(ctx.Done())
-	go w.workflowInformer.Run(ctx.Done())
-
-	if !cache.WaitForCacheSync(ctx.Done(), w.JobInformer.HasSynced, w.workflowInformer.HasSynced) {
+	if !cache.WaitForCacheSync(ctx.Done(), w.JobSynced, w.WorkflowSynced) {
 		return fmt.Errorf("Timed out waiting for caches to sync")
 	}
 
@@ -197,18 +182,12 @@ func (w *WorkflowController) sync(key string) error {
 		return err
 	}
 	glog.V(6).Infof("Syncing %s/%s", namespace, name)
-
-	obj, exists, err := w.workflowStore.GetByKey(key)
+	sharedWorkflow, err := w.WorkflowLister.Workflows(namespace).Get(name)
 	if err != nil {
-		glog.Errorf("unable to get Workflow %s/%s: %v", namespace, name, err)
+		glog.Errorf("unable to get Workflow %s/%s: %v. Maybe deleted", namespace, name, err)
+		//runtime.HandleError(fmt.Errorf("workflow '%s' in work queue no longer exists", key))
 		return nil
 	}
-	if !exists {
-		glog.V(6).Info("unable to get Workflow %s/%s: %v (may be deleted?)", namespace, name)
-		return nil
-	}
-	sharedWorkflow := obj.(*wapi.Workflow)
-	// Defaulting...
 	if !wapi.IsWorkflowDefaulted(sharedWorkflow) {
 		defaultedWorkflow := wapi.DefaultWorkflow(sharedWorkflow)
 		if err := w.updateHandler(defaultedWorkflow); err != nil {
@@ -332,27 +311,15 @@ func (w *WorkflowController) onDeleteWorkflow(obj interface{}) {
 }
 
 func (w *WorkflowController) updateWorkflow(wfl *wapi.Workflow) error {
-	if err := w.WorkflowClient.Put().
-		Name(wfl.ObjectMeta.Name).
-		Namespace(wfl.ObjectMeta.Namespace).
-		Resource(wapi.ResourcePlural).
-		Body(wfl).
-		Do().
-		Error(); err != nil {
-		return fmt.Errorf("unable to update Workflow: %v", err)
+	if _, err := w.WorkflowClient.WorkflowV1().Workflows(wfl.Namespace).Update(wfl); err != nil {
+		glog.V(6).Infof("Workflow %s/%s updated", wfl.Namespace, wfl.Name)
 	}
-	glog.V(6).Infof("Workflow %s/%s updated", wfl.ObjectMeta.Namespace, wfl.ObjectMeta.Name)
 	return nil
 }
 
 func (w *WorkflowController) deleteWorkflow(namespace, name string) error {
-	if err := w.WorkflowClient.Delete().
-		Name(name).
-		Namespace(namespace).
-		Resource(wapi.ResourcePlural).
-		Do().
-		Error(); err != nil {
-		return fmt.Errorf("unable to delete Workflow: %v", err)
+	if err := w.WorkflowClient.WorkflowV1().Workflows(namespace).Delete(name, nil); err != nil {
+		return fmt.Errorf("unable to delete Workflow %s/%s: %v", namespace, name, err)
 	}
 	glog.V(6).Infof("Workflow %s/%s deleted", namespace, name)
 	return nil
@@ -420,16 +387,15 @@ func (w *WorkflowController) onDeleteJob(obj interface{}) {
 func (w *WorkflowController) getWorkflowsFromJob(job *batch.Job) ([]*wapi.Workflow, error) {
 	workflows := []*wapi.Workflow{}
 	if len(job.Labels) == 0 {
-		return workflows, fmt.Errorf("no workflows found for job. Job %v has no labels", job.Name)
+		return workflows, fmt.Errorf("no workflows found for job. Job %s/%s has no labels", job.Namespace, job.Name)
 	}
-	workflowList := w.workflowStore.List()
+	workflowList, err := w.WorkflowLister.List(labels.Everything())
+	if err != nil {
+		return workflows, fmt.Errorf("no workflows found for job. Job %s/%s. Cannot list workflows: %v", job.Namespace, job.Name, err)
+	}
+	//workflowStore.List()
 	for i := range workflowList {
-		tmp := workflowList[i]
-		workflow, ok := tmp.(*wapi.Workflow)
-		if !ok {
-			glog.Errorf("unable to convert to Workflow %+v", tmp)
-			continue
-		}
+		workflow := workflowList[i]
 		if workflow.Namespace != job.Namespace {
 			continue
 		}

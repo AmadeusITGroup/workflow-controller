@@ -6,19 +6,18 @@ import (
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	wapi "github.com/sdminonne/workflow-controller/pkg/api/v1"
+	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
+	"github.com/sdminonne/workflow-controller/pkg/client/versioned"
 	"github.com/sdminonne/workflow-controller/pkg/controller"
 	"github.com/sdminonne/workflow-controller/test/e2e/framework"
 )
 
-func deleteWorkflow(workflowClient *rest.RESTClient, workflow *wapi.Workflow) {
-	result := wapi.Workflow{}
-	workflowClient.Delete().Resource(wapi.ResourcePlural).Namespace(workflow.Namespace).Do().Into(&result)
+func deleteWorkflow(workflowClient versioned.Interface, workflow *wapi.Workflow) {
+	workflowClient.WorkflowV1().Workflows(workflow.Namespace).Delete(workflow.Name, nil)
 	By("Workflow deleted")
 }
 
@@ -60,8 +59,7 @@ var _ = Describe("Workflow CRUD", func() {
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
 		Eventually(func() error {
-			workflows := wapi.WorkflowList{}
-			err := workflowClient.Get().Resource(wapi.ResourcePlural).Namespace(ns).Do().Into(&workflows)
+			workflows, err := workflowClient.WorkflowV1().Workflows(ns).List(metav1.ListOptions{})
 			if err != nil {
 				framework.Logf("Cannot list workflows:%v", err)
 				return err
@@ -105,8 +103,7 @@ var _ = Describe("Workflow CRUD", func() {
 
 		// Edit Workflow adding a step "four"
 		Eventually(func() error {
-			workflows := wapi.WorkflowList{}
-			err := workflowClient.Get().Resource(wapi.ResourcePlural).Namespace(ns).Do().Into(&workflows)
+			workflows, err := workflowClient.WorkflowV1().Workflows(ns).List(metav1.ListOptions{})
 			if err != nil {
 				framework.Logf("Cannot list workflows:%v", err)
 				return err
@@ -117,8 +114,7 @@ var _ = Describe("Workflow CRUD", func() {
 			workflow := workflows.Items[0].DeepCopy()
 			step4 := framework.NewWorkflowStep("four", []string{"three"})
 			workflow.Spec.Steps = append(workflow.Spec.Steps, *step4)
-			result := wapi.Workflow{}
-			if err := workflowClient.Put().Resource(wapi.ResourcePlural).Namespace(ns).Name(workflow.Name).Body(workflow).Do().Into(&result); err != nil {
+			if _, err = workflowClient.WorkflowV1().Workflows(ns).Update(workflow); err != nil {
 				return fmt.Errorf("unable to update workflow %s/%s: %v", workflow.Namespace, workflow.Name, err)
 			}
 			framework.Logf("workflow update")
@@ -128,8 +124,7 @@ var _ = Describe("Workflow CRUD", func() {
 		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 
 		Eventually(func() error { // Now checks if it finished and updated step finished too
-			workflows := wapi.WorkflowList{}
-			err := workflowClient.Get().Resource(wapi.ResourcePlural).Namespace(ns).Do().Into(&workflows)
+			workflows, err := workflowClient.WorkflowV1().Workflows(ns).List(metav1.ListOptions{})
 			if err != nil {
 				framework.Logf("Cannot list workflows:%v", err)
 				return err
@@ -161,8 +156,7 @@ var _ = Describe("Workflow CRUD", func() {
 		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 
 		Eventually(func() error {
-			workflows := wapi.WorkflowList{}
-			err := workflowClient.Get().Resource(wapi.ResourcePlural).Namespace(ns).Do().Into(&workflows)
+			workflows, err := workflowClient.WorkflowV1().Workflows(ns).List(metav1.ListOptions{})
 			if err != nil {
 				framework.Logf("Cannot list workflows:%v", err)
 				return err

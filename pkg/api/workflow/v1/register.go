@@ -4,6 +4,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/sdminonne/workflow-controller/pkg/api/workflow"
 )
 
 var (
@@ -12,8 +14,6 @@ var (
 )
 
 const (
-	// GroupName is the group name used in this package.
-	GroupName = "dag.example.com"
 	// ResourcePlural is the id to indentify pluarals
 	ResourcePlural = "workflows"
 	// ResourceSingular represents the id for identify singular resource
@@ -25,7 +25,12 @@ const (
 )
 
 // SchemeGroupVersion is the group version used to register these objects.
-var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: ResourceVersion}
+var SchemeGroupVersion = schema.GroupVersion{Group: workflow.GroupName, Version: ResourceVersion}
+
+// Resource takes an unqualified resource and returns a Group qualified GroupResource
+func Resource(resource string) schema.GroupResource {
+	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
 
 // addKnownTypes adds the set of types defined in this package to the supplied scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {

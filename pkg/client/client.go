@@ -15,24 +15,27 @@ import (
 
 	"github.com/golang/glog"
 
-	wapi "github.com/sdminonne/workflow-controller/pkg/api/v1"
+	"github.com/sdminonne/workflow-controller/pkg/api/workflow"
+	v1 "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
+
+	"github.com/sdminonne/workflow-controller/pkg/client/versioned"
 )
 
 // DefineWorklowResource defines a WorkflowResource as a k8s CR
 func DefineWorklowResource(clientset apiextensionsclient.Interface) (*apiextensionsv1beta1.CustomResourceDefinition, error) {
-	workflowResourceName := wapi.ResourcePlural + "." + wapi.GroupName
+	workflowResourceName := v1.ResourcePlural + "." + workflow.GroupName
 	crd := &apiextensionsv1beta1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: workflowResourceName,
 		},
 		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
-			Group:   wapi.GroupName,
-			Version: wapi.SchemeGroupVersion.Version,
+			Group:   workflow.GroupName,
+			Version: v1.SchemeGroupVersion.Version,
 			Scope:   apiextensionsv1beta1.NamespaceScoped,
 			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
-				Plural:     wapi.ResourcePlural,
-				Singular:   wapi.ResourceSingular,
-				Kind:       reflect.TypeOf(wapi.Workflow{}).Name(),
+				Plural:     v1.ResourcePlural,
+				Singular:   v1.ResourceSingular,
+				Kind:       reflect.TypeOf(v1.Workflow{}).Name(),
 				ShortNames: []string{"wfl"},
 			},
 		},
@@ -74,22 +77,21 @@ func DefineWorklowResource(clientset apiextensionsclient.Interface) (*apiextensi
 }
 
 // NewClient builds and initializes a Client and a Scheme for Workflow CR
-func NewClient(cfg *rest.Config) (*rest.RESTClient, *runtime.Scheme, error) {
+func NewClient(cfg *rest.Config) (versioned.Interface, error) {
 	scheme := runtime.NewScheme()
-	if err := wapi.AddToScheme(scheme); err != nil {
-		return nil, nil, err
+	if err := v1.AddToScheme(scheme); err != nil {
+		return nil, err
 	}
 
 	config := *cfg
-	config.GroupVersion = &wapi.SchemeGroupVersion
+	config.GroupVersion = &v1.SchemeGroupVersion
 	config.APIPath = "/apis"
 	config.ContentType = runtime.ContentTypeJSON
 	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: serializer.NewCodecFactory(scheme)}
 
-	client, err := rest.RESTClientFor(&config)
+	cs, err := versioned.NewForConfig(&config)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	return client, scheme, nil
+	return cs, nil
 }
