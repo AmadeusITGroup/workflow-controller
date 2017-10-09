@@ -11,9 +11,9 @@ import (
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
-	wapi "github.com/sdminonne/workflow-controller/pkg/api/v1"
+	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
+	"github.com/sdminonne/workflow-controller/pkg/client/versioned"
 	"github.com/sdminonne/workflow-controller/pkg/controller"
 )
 
@@ -28,7 +28,7 @@ func IsWorkflowFailedDueDeadline(w *wapi.Workflow) bool {
 }
 
 // BuildAndSetClients builds and initilize workflow and kube client
-func BuildAndSetClients() (*rest.RESTClient, *clientset.Clientset) {
+func BuildAndSetClients() (versioned.Interface, *clientset.Clientset) {
 	f, err := NewFramework()
 	Ω(err).ShouldNot(HaveOccurred())
 	Ω(f).ShouldNot(BeNil())
@@ -160,11 +160,9 @@ func NewWorkflowWithThreeSteps(group, version, name, namespace string) *wapi.Wor
 }
 
 // HOCreateWorkflow is an higher order func that returns the func to create a Workflow
-func HOCreateWorkflow(workflowClient *rest.RESTClient, workflow *wapi.Workflow, namespace string) func() error {
+func HOCreateWorkflow(workflowClient versioned.Interface, workflow *wapi.Workflow, namespace string) func() error {
 	return func() error {
-		result := wapi.Workflow{}
-		err := workflowClient.Post().Resource(wapi.ResourcePlural).Namespace(namespace).Body(workflow).Do().Into(&result)
-		if err != nil {
+		if _, err := workflowClient.WorkflowV1().Workflows(namespace).Create(workflow); err != nil {
 			glog.Warningf("cannot create Workflow %s/%s: %v", namespace, workflow.Name, err)
 			return err
 		}
@@ -174,10 +172,10 @@ func HOCreateWorkflow(workflowClient *rest.RESTClient, workflow *wapi.Workflow, 
 }
 
 // HOIsWorkflowStarted is an higher order func that returns the func that checks whether Workflow is started
-func HOIsWorkflowStarted(workflowClient *rest.RESTClient, workflow *wapi.Workflow, namespace string) func() error {
+func HOIsWorkflowStarted(workflowClient versioned.Interface, workflow *wapi.Workflow, namespace string) func() error {
 	return func() error {
-		workflows := wapi.WorkflowList{}
-		err := workflowClient.Get().Resource(wapi.ResourcePlural).Namespace(namespace).Do().Into(&workflows)
+		//workflows := wapi.WorkflowList{}
+		workflows, err := workflowClient.WorkflowV1().Workflows(workflow.Namespace).List(metav1.ListOptions{})
 		if err != nil {
 			Logf("Cannot list workflows:%v", err)
 			return err
@@ -195,10 +193,9 @@ func HOIsWorkflowStarted(workflowClient *rest.RESTClient, workflow *wapi.Workflo
 }
 
 // HOIsWorkflowFinished is an higher order func that returns the func that checks whether a Workflow is finished
-func HOIsWorkflowFinished(workflowClient *rest.RESTClient, workflow *wapi.Workflow, namespace string) func() error {
+func HOIsWorkflowFinished(workflowClient versioned.Interface, workflow *wapi.Workflow, namespace string) func() error {
 	return func() error {
-		workflows := wapi.WorkflowList{}
-		err := workflowClient.Get().Resource(wapi.ResourcePlural).Namespace(namespace).Do().Into(&workflows)
+		workflows, err := workflowClient.WorkflowV1().Workflows(workflow.Namespace).List(metav1.ListOptions{})
 		if err != nil {
 			Logf("Cannot list workflows:%v", err)
 			return err
@@ -216,10 +213,9 @@ func HOIsWorkflowFinished(workflowClient *rest.RESTClient, workflow *wapi.Workfl
 }
 
 // HONoWorkflowsShouldRemains is an higher order func that returns the func that checks whether some workflows are still present
-func HONoWorkflowsShouldRemains(workflowClient *rest.RESTClient, namespace string) func() error {
+func HONoWorkflowsShouldRemains(workflowClient versioned.Interface, namespace string) func() error {
 	return func() error {
-		workflows := wapi.WorkflowList{}
-		err := workflowClient.Get().Resource(wapi.ResourcePlural).Namespace(namespace).Do().Into(&workflows)
+		workflows, err := workflowClient.WorkflowV1().Workflows(namespace).List(metav1.ListOptions{})
 		if err != nil {
 			Logf("Cannot list workflows:%v", err)
 			return err

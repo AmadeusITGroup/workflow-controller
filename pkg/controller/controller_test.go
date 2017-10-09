@@ -3,18 +3,21 @@ package controller
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	batch "k8s.io/api/batch/v1"
 	batchv2 "k8s.io/api/batch/v2alpha1"
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeinformers "k8s.io/client-go/informers"
 
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
-	wapi "github.com/sdminonne/workflow-controller/pkg/api/v1"
+	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
 	wclient "github.com/sdminonne/workflow-controller/pkg/client"
+	winformers "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions"
 )
 
 // utility function to create a basic Workflow
@@ -108,23 +111,26 @@ func TestControllerSyncWorkflow(t *testing.T) {
 	}
 	for name, tc := range testCases {
 		restConfig := &rest.Config{Host: "localhost"}
-		workflowClient, workflowScheme, err := wclient.NewClient(restConfig)
+		workflowClient, err := wclient.NewClient(restConfig)
 
-		kubeclient, err := clientset.NewForConfig(restConfig)
+		kubeClient, err := clientset.NewForConfig(restConfig)
 		if err != nil {
 			t.Fatalf("%s:%v", name, err)
 		}
-		controller := NewWorkflowController(workflowClient, workflowScheme, kubeclient)
+		kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+		workflowInformerFactory := winformers.NewSharedInformerFactory(workflowClient, time.Second*30)
+
+		controller := NewWorkflowController(workflowClient, kubeClient, kubeInformerFactory, workflowInformerFactory)
 		controller.JobControl = &FakeJobControl{}
-		controller.JobStoreSynced = func() bool { return true }
+		controller.JobSynced = func() bool { return true }
 		key, err := cache.MetaNamespaceKeyFunc(tc.workflow)
 		if err != nil {
 			t.Fatalf("%s - unable to get key from workflow:%v", name, err)
 		}
 		tweakedWorkflow := tc.workflowTweak(tc.workflow) // modify basic workflow
-		controller.workflowStore.Add(tweakedWorkflow)
+		workflowInformerFactory.Workflow().V1().Workflows().Informer().GetStore().Add(tweakedWorkflow)
 		for i := range tc.jobs {
-			controller.JobInformer.GetStore().Add(tc.jobs[i])
+			kubeInformerFactory.Batch().V1().Jobs().Informer().GetStore().Add(tc.jobs[i])
 		}
 		controller.updateHandler = tc.customUpdateHandler
 		if err := controller.sync(key); err != nil {

@@ -16,7 +16,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 
-	wapi "github.com/sdminonne/workflow-controller/pkg/api/v1"
+	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
 )
 
 // JobControlInterface defines interface to control Jobs life-cycle.

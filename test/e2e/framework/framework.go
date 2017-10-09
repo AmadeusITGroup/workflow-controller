@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/sdminonne/workflow-controller/pkg/client"
+	"github.com/sdminonne/workflow-controller/pkg/client/versioned"
 )
 
 // Framework stores necessary info to run e2e
@@ -38,8 +39,8 @@ func (f *Framework) kubeClient() (*clientset.Clientset, error) {
 	return clientset.NewForConfig(f.KubeConfig)
 }
 
-func (f *Framework) workflowClient() (*rest.RESTClient, error) {
-	c, _, err := client.NewClient(f.KubeConfig)
+func (f *Framework) workflowClient() (versioned.Interface, error) {
+	c, err := client.NewClient(f.KubeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create workflow client:%v", err)
 	}
