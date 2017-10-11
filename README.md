@@ -25,7 +25,7 @@ At this point the workflow-controller will start to handle the jobs.
 ### in a kubernetes pod
 
 
-To run `workflow-controller` in a Kubernetes pod you shoud run this command
+To run `workflow-controller` in a Kubernetes pod you should run this command
 
 ```shell
 $ kubectl create -f .../deployment/k8s/workflow-controller_allinone.yaml
