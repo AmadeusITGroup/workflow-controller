@@ -13,7 +13,6 @@ import (
 	batch "k8s.io/api/batch/v1"
 	batchv2 "k8s.io/api/batch/v2alpha1"
 	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -340,8 +339,7 @@ func (w *WorkflowController) onAddJob(obj interface{}) {
 func (w *WorkflowController) onUpdateJob(oldObj, newObj interface{}) {
 	oldJob := oldObj.(*batch.Job)
 	newJob := newObj.(*batch.Job)
-
-	if equality.Semantic.DeepEqual(oldJob, newJob) {
+	if oldJob.ResourceVersion == newJob.ResourceVersion { // Since periodic resync will send update events for all known jobs.
 		return
 	}
 	glog.V(6).Infof("onUpdateJob old=%v, cur=%v ", oldJob.Name, newJob.Name)
