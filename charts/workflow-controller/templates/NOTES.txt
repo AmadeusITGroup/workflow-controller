@@ -1,0 +1,53 @@
+# Workflow-controller
+
+A simple Kubernetes workflow controller.
+
+Now you can create your workflow
+
+an example:
+
+```yaml
+apiVersion: "{{ .Values.api.groupName }}/v1"
+kind: Workflow
+metadata:
+  name: hello-workflow
+spec:
+  metadata:
+    name: hello-workflow
+  selector:
+    matchLabels:
+      workflow: hello
+  steps:
+  - name: one
+    jobTemplate:
+      spec:
+        template:
+          metadata:
+            name: step_one
+            labels:
+              workflow: step_one
+          spec:
+            restartPolicy: Never
+            dnsPolicy: Default
+            containers:
+              - name: step-one-wait-and-exit
+                image: gcr.io/google-containers/busybox
+                command: ["sh", "-c", "echo Starting on: $(date); sleep 5; echo Goodbye cruel world at: $(date)"]
+  - name: two
+    jobTemplate:
+      spec:
+        template:
+          metadata:
+            name: step_two
+            labels:
+              workflow: step_two
+          spec:
+            restartPolicy: Never
+            dnsPolicy: Default
+            containers:
+              - name: step-two-wait-and-exit
+                image: gcr.io/google_containers/busybox
+                command: ["sh", "-c", "echo Starting on: $(date); sleep 5; echo Goodbye cruel world at: $(date)"]
+    dependencies:
+      - one
+```
