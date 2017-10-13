@@ -12,7 +12,6 @@ import (
 
 	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
 	"github.com/sdminonne/workflow-controller/pkg/client/versioned"
-	"github.com/sdminonne/workflow-controller/pkg/controller"
 	"github.com/sdminonne/workflow-controller/test/e2e/framework"
 )
 
@@ -86,6 +85,8 @@ var _ = Describe("Workflow CRUD", func() {
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
 		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+
+		Eventually(framework.HOChekcAllStepsFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 	})
 
 	It("should be able to update workflow", func() {
@@ -123,22 +124,8 @@ var _ = Describe("Workflow CRUD", func() {
 
 		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 
-		Eventually(func() error { // Now checks if it finished and updated step finished too
-			workflows, err := workflowClient.WorkflowV1().Workflows(ns).List(metav1.ListOptions{})
-			if err != nil {
-				framework.Logf("Cannot list workflows:%v", err)
-				return err
-			}
-			if len(workflows.Items) != 1 {
-				return fmt.Errorf("Expected only 1 workflows got %d", len(workflows.Items))
-			}
-			w := workflows.Items[0]
-			if stepStatusFour := controller.GetStepStatusByName(&w, "four"); stepStatusFour != nil && stepStatusFour.Complete {
-				framework.Logf("Workflow %s finished and updated", myWorkflow.Name)
-				return nil
-			}
-			return fmt.Errorf("couldn't get step four for %s", myWorkflow.Name)
-		}, "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOChekcAllStepsFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+
 	})
 
 	It("should exceed deadline", func() {
@@ -151,6 +138,7 @@ var _ = Describe("Workflow CRUD", func() {
 			deleteWorkflow(workflowClient, myWorkflow)
 			deleteAllJobs(kubeClient, myWorkflow)
 		}()
+
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
 		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())

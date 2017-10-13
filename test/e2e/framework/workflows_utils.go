@@ -227,3 +227,49 @@ func HONoWorkflowsShouldRemains(workflowClient versioned.Interface, namespace st
 		return fmt.Errorf("still some workflows found")
 	}
 }
+
+// HODeleteWorkflow is an higher order func that returns the func to remove the Workflow
+func HODeleteWorkflow(workflowClient versioned.Interface, workflow *wapi.Workflow, namespace string) func() error {
+	return func() error {
+		return workflowClient.WorkflowV1().Workflows(namespace).Delete(workflow.Name, nil)
+	}
+}
+
+// HOCheckAllStepsFinished is an higher order func that returns func that checks
+// whether all step are finished
+func HOChekcAllStepsFinished(workflowClient versioned.Interface, workflow *wapi.Workflow, namespace string) func() error {
+	return func() error {
+		w, err := workflowClient.WorkflowV1().Workflows(namespace).Get(workflow.Name, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("unable to get %s/%s:%v", w.Namespace, w.Name, err)
+		}
+		if len(w.Status.Statuses) == 0 {
+			return fmt.Errorf("workflow %s/%s not fully completed", w.Namespace, w.Name)
+		}
+		for _, s := range w.Status.Statuses {
+			if !s.Complete {
+				return fmt.Errorf("workflow %s/%s not fully completed", w.Namespace, w.Name)
+			}
+		}
+		return nil
+	}
+}
+
+// HOCheckStepFinished is an higher order func that returns the func that check if the job
+// at the specified step finished
+func HOCheckStepFinished(workflowClient versioned.Interface, workflow *wapi.Workflow, step, namespace string) func() error {
+	return func() error {
+		w, err := workflowClient.WorkflowV1().Workflows(namespace).Get(workflow.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		stepStatus := controller.GetStepStatusByName(w, step)
+		if stepStatus == nil {
+			return fmt.Errorf("unable to find step %q in %s/%s", step, w.Namespace, w.Name)
+		}
+		if !stepStatus.Complete {
+			return fmt.Errorf("step %q in %s/%s not (yet) complete", step, w.Namespace, w.Name)
+		}
+		return nil
+	}
+}
