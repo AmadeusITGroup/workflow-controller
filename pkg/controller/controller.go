@@ -184,7 +184,6 @@ func (w *WorkflowController) sync(key string) error {
 	sharedWorkflow, err := w.WorkflowLister.Workflows(namespace).Get(name)
 	if err != nil {
 		glog.Errorf("unable to get Workflow %s/%s: %v. Maybe deleted", namespace, name, err)
-		//runtime.HandleError(fmt.Errorf("workflow '%s' in work queue no longer exists", key))
 		return nil
 	}
 	if !wapi.IsWorkflowDefaulted(sharedWorkflow) {
@@ -207,6 +206,11 @@ func (w *WorkflowController) sync(key string) error {
 				return fmt.Errorf("unable to delete invalid workflow %s/%s: %v", namespace, name, err)
 			}
 		}
+		return nil
+	}
+
+	// TODO: add test the case of graceful deletion
+	if sharedWorkflow.DeletionTimestamp != nil {
 		return nil
 	}
 
@@ -239,6 +243,7 @@ func (w *WorkflowController) sync(key string) error {
 		}
 		return nil
 	}
+
 	return w.manageWorkflow(workflow)
 }
 
@@ -296,14 +301,9 @@ func (w *WorkflowController) onUpdateWorkflow(oldObj, newObj interface{}) {
 }
 
 func (w *WorkflowController) onDeleteWorkflow(obj interface{}) {
-	workflow, ok := obj.(*wapi.Workflow)
-	if !ok {
-		glog.Errorf("Expected workflow object. Got: %+v", obj)
-		return
-	}
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		glog.Errorf("Unable to get key for %s/%s: %v", workflow.Namespace, workflow.Name, err)
+		glog.Errorf("Unable to get key for %#v: %v", obj, err)
 		return
 	}
 	w.queue.Add(key)
@@ -320,6 +320,7 @@ func (w *WorkflowController) deleteWorkflow(namespace, name string) error {
 	if err := w.WorkflowClient.WorkflowV1().Workflows(namespace).Delete(name, nil); err != nil {
 		return fmt.Errorf("unable to delete Workflow %s/%s: %v", namespace, name, err)
 	}
+
 	glog.V(6).Infof("Workflow %s/%s deleted", namespace, name)
 	return nil
 }
@@ -526,6 +527,7 @@ func (w *WorkflowController) retrieveJobsStep(workflow *wapi.Workflow, template 
 }
 
 func (w *WorkflowController) deleteWorkflowJobs(workflow *wapi.Workflow) error {
+	glog.V(6).Infof("deleting all jobs for workflow %s/%s", workflow.Namespace, workflow.Name)
 	jobsSelector := inferrWorkflowLabelSelectorForJobs(workflow)
 	jobs, err := w.JobLister.Jobs(workflow.Namespace).List(jobsSelector)
 	if err != nil {
@@ -534,6 +536,10 @@ func (w *WorkflowController) deleteWorkflowJobs(workflow *wapi.Workflow) error {
 	errs := []error{}
 	for i := range jobs {
 		jobToBeRemoved := jobs[i].DeepCopy()
+		if IsJobFinished(jobToBeRemoved) { // don't remove already finished job
+			glog.V(4).Info("skipping job %s since finished", jobToBeRemoved.Name)
+			continue
+		}
 		if err := w.JobControl.DeleteJob(jobToBeRemoved.Namespace, jobToBeRemoved.Name, jobToBeRemoved); err != nil {
 			errs = append(errs, err)
 		}
