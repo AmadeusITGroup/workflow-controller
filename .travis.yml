@@ -12,13 +12,18 @@ install:
   - export PATH="$TRAVIS_BUILD_DIR/.bin:$PATH"
   - wget https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.7.sh && chmod +x dind-cluster-v1.7.sh && ./dind-cluster-v1.7.sh up
   - export PATH="$HOME/.kubeadm-dind-cluster:$PATH"
+  - curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
+  - kubectl -n kube-system create sa tiller
+  - kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
+  - helm init --service-account tiller
 
 script:
   - make build
   - make test
   - make container
-  - kubectl create -f deployment/k8s/workflow-controller_allinone.yaml
+  - helm install --version latest -n end2end-test charts/workflow-controller
   - while [ $(kubectl get pod --selector=app=workflow-controller | grep 'workflow-controller' | awk '{print $3}') != "Running" ]; do echo "$(kubectl get pod --selector=app=workflow-controller)"; sleep 5; done
   - cd ./test/e2e && go test -c && ./e2e.test --kubeconfig=$HOME/.kube/config --ginkgo.slowSpecThreshold 30
+  - helm delete end2end-test
 after_success:
   - bash <(curl -s https://codecov.io/bash)

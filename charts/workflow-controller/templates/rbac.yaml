@@ -1,0 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: workflow-controller
+rules:
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - "*"
+- apiGroups:
+  - {{ .Values.api.groupName }}
+  resources:
+  - workflows
+  verbs:
+  - "*"
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs: ["*"]
+- apiGroups: [""]
+  resources:
+  - namespaces
+  verbs: ["list"]
