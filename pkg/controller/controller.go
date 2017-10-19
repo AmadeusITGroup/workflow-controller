@@ -306,6 +306,27 @@ func (w *WorkflowController) onDeleteWorkflow(obj interface{}) {
 		glog.Errorf("Unable to get key for %#v: %v", obj, err)
 		return
 	}
+	// get deleted workflow object
+	workflow, ok := obj.(*wapi.Workflow)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			glog.Errorf("unknown object from Workflow delete event: %#v", obj)
+			return
+		}
+		workflow, ok = tombstone.Obj.(*wapi.Workflow)
+		if !ok {
+			glog.Errorf("Tombstone contained object that is not an Workflow: %#v", obj)
+			return
+		}
+	}
+	// clean ALL jobs for deleted workflow
+	err = w.cleanWorkflowJobs(workflow)
+	if err != nil {
+		glog.Errorf("Unable to delete workflow jobs for %#v: %v", workflow, err)
+		return
+	}
+
 	w.queue.Add(key)
 }
 
@@ -540,6 +561,23 @@ func (w *WorkflowController) deleteWorkflowJobs(workflow *wapi.Workflow) error {
 			glog.V(4).Info("skipping job %s since finished", jobToBeRemoved.Name)
 			continue
 		}
+		if err := w.JobControl.DeleteJob(jobToBeRemoved.Namespace, jobToBeRemoved.Name, jobToBeRemoved); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return utilerrors.NewAggregate(errs)
+}
+
+func (w *WorkflowController) cleanWorkflowJobs(workflow *wapi.Workflow) error {
+	glog.V(6).Infof("deleting all jobs for deleted workflow %s/%s", workflow.Namespace, workflow.Name)
+	jobsSelector := justWorkflowLabelSelectorForJobs(workflow)
+	jobs, err := w.JobLister.Jobs(workflow.Namespace).List(jobsSelector)
+	if err != nil {
+		return fmt.Errorf("workflow %s/%s, unable to retrieve jobs to remove: %v", workflow.Namespace, workflow.Name, err)
+	}
+	errs := []error{}
+	for i := range jobs {
+		jobToBeRemoved := jobs[i].DeepCopy()
 		if err := w.JobControl.DeleteJob(jobToBeRemoved.Namespace, jobToBeRemoved.Name, jobToBeRemoved); err != nil {
 			errs = append(errs, err)
 		}

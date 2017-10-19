@@ -93,6 +93,12 @@ func inferrWorkflowLabelSelectorForJobs(workflow *wapi.Workflow) labels.Selector
 	return labels.SelectorFromSet(set)
 }
 
+func justWorkflowLabelSelectorForJobs(workflow *wapi.Workflow) labels.Selector {
+	set := make(labels.Set)
+	set[WorkflowLabelKey] = workflow.Name
+	return labels.SelectorFromSet(set)
+}
+
 // IsJobFinished checks whether a Job is finished
 func IsJobFinished(j *batch.Job) bool {
 	for _, c := range j.Status.Conditions {
@@ -101,4 +107,14 @@ func IsJobFinished(j *batch.Job) bool {
 		}
 	}
 	return false
+}
+
+func cascadeDeleteOptions(gracePeriodSeconds int64) *metav1.DeleteOptions {
+	return &metav1.DeleteOptions{
+		GracePeriodSeconds: func(t int64) *int64 { return &t }(gracePeriodSeconds),
+		PropagationPolicy: func() *metav1.DeletionPropagation {
+			foreground := metav1.DeletePropagationForeground
+			return &foreground
+		}(),
+	}
 }
