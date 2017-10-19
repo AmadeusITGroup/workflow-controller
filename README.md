@@ -2,6 +2,7 @@
 [![Build Status](https://travis-ci.org/sdminonne/workflow-controller.svg?branch=master)](https://travis-ci.org/sdminonne/workflow-controller)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sdminonne/workflow-controller)](https://goreportcard.com/report/github.com/sdminonne/workflow-controller)
 [![codecov](https://codecov.io/gh/sdminonne/workflow-controller/branch/master/graph/badge.svg)](https://codecov.io/gh/sdminonne/workflow-controller)
+![DopeBadge](https://img.shields.io/badge/Hightower-dope-C0C0C0.svg)
 
 A simple Kubernetes workflow controller. TODO: add more explanations.
 
