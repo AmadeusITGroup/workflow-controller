@@ -20,13 +20,23 @@ func deleteWorkflow(workflowClient versioned.Interface, workflow *wapi.Workflow)
 	By("Workflow deleted")
 }
 
+func cascadeDeleteOptions(gracePeriodSeconds int64) *metav1.DeleteOptions {
+	return &metav1.DeleteOptions{
+		GracePeriodSeconds: func(t int64) *int64 { return &t }(gracePeriodSeconds),
+		PropagationPolicy: func() *metav1.DeletionPropagation {
+			foreground := metav1.DeletePropagationForeground
+			return &foreground
+		}(),
+	}
+}
+
 func deleteAllJobs(kubeClient clientset.Interface, workflow *wapi.Workflow) {
 	jobs, err := kubeClient.Batch().Jobs(workflow.Namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return
 	}
 	for i := range jobs.Items {
-		kubeClient.Batch().Jobs(workflow.Namespace).Delete(jobs.Items[i].Name, nil)
+		kubeClient.Batch().Jobs(workflow.Namespace).Delete(jobs.Items[i].Name, cascadeDeleteOptions(0))
 	}
 	By("Jobs delete")
 }

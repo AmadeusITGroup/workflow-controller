@@ -52,7 +52,7 @@ func (w WorkflowJobControl) DeleteJob(namespace, jobName string, object runtime.
 		return fmt.Errorf("object does not have ObjectMeta, %v", err)
 	}
 
-	if err := w.KubeClient.Batch().Jobs(namespace).Delete(jobName, nil); err != nil {
+	if err := w.KubeClient.Batch().Jobs(namespace).Delete(jobName, cascadeDeleteOptions(0)); err != nil {
 		w.Recorder.Eventf(object, api.EventTypeWarning, "FailedDelete", "Error deleting: %v", err)
 		return fmt.Errorf("unable to delete job: %v", err)
 	}
