@@ -3,8 +3,6 @@ package controller
 import (
 	"fmt"
 
-	"github.com/golang/glog"
-
 	batch "k8s.io/api/batch/v1"
 	batchv2 "k8s.io/api/batch/v2alpha1"
 	api "k8s.io/api/core/v1"
@@ -16,6 +14,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 
+	"github.com/golang/glog"
 	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
 )
 
@@ -52,7 +51,7 @@ func (w WorkflowJobControl) DeleteJob(namespace, jobName string, object runtime.
 		return fmt.Errorf("object does not have ObjectMeta, %v", err)
 	}
 
-	if err := w.KubeClient.Batch().Jobs(namespace).Delete(jobName, cascadeDeleteOptions(0)); err != nil {
+	if err := w.KubeClient.Batch().Jobs(namespace).Delete(jobName, CascadeDeleteOptions(0)); err != nil {
 		w.Recorder.Eventf(object, api.EventTypeWarning, "FailedDelete", "Error deleting: %v", err)
 		return fmt.Errorf("unable to delete job: %v", err)
 	}

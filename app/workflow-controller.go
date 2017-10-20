@@ -20,6 +20,8 @@ import (
 	"context"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	"github.com/golang/glog"
 
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -28,11 +30,13 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
 	wclient "github.com/sdminonne/workflow-controller/pkg/client"
 	winformers "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions"
 	"github.com/sdminonne/workflow-controller/pkg/controller"
+	"github.com/sdminonne/workflow-controller/pkg/garbagecollector"
 )
 
 // WorkflowController contains all info to run the worklow controller app
@@ -40,6 +44,7 @@ type WorkflowController struct {
 	kubeInformerFactory     kubeinformers.SharedInformerFactory
 	workflowInformerFactory winformers.SharedInformerFactory
 	controller              *controller.WorkflowController
+	GC                      *garbagecollector.GarbageCollector
 }
 
 func initKubeConfig(c *Config) (*rest.Config, error) {
@@ -81,6 +86,7 @@ func NewWorkflowController(c *Config) *WorkflowController {
 		kubeInformerFactory:     kubeInformerFactory,
 		workflowInformerFactory: workflowInformerFactory,
 		controller:              controller.NewWorkflowController(workflowClient, kubeClient, kubeInformerFactory, workflowInformerFactory),
+		GC:                      garbagecollector.NewGarbageCollector(workflowClient, kubeClient, workflowInformerFactory),
 	}
 }
 
@@ -91,6 +97,22 @@ func (c *WorkflowController) Run() {
 		defer cancelFunc()
 		c.kubeInformerFactory.Start(ctx.Done())
 		c.workflowInformerFactory.Start(ctx.Done())
+		c.runGC(ctx)
 		c.controller.Run(ctx)
+
 	}
+}
+
+func (c *WorkflowController) runGC(ctx context.Context) {
+	go func() {
+		if !cache.WaitForCacheSync(ctx.Done(), c.GC.WorkflowSynced) {
+			glog.Errorf("Timed out waiting for caches to sync")
+		}
+		wait.Until(func() {
+			err := c.GC.CollectWorkflowJobs()
+			if err != nil {
+				glog.Errorf("collecting workflow jobs: %v", err)
+			}
+		}, garbagecollector.Interval, ctx.Done())
+	}()
 }

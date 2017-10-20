@@ -36,13 +36,12 @@ func deleteAllJobs(kubeClient clientset.Interface, workflow *wapi.Workflow) {
 		return
 	}
 	for i := range jobs.Items {
-		kubeClient.Batch().Jobs(workflow.Namespace).Delete(jobs.Items[i].Name, cascadeDeleteOptions(0))
+		kubeClient.Batch().Jobs(workflow.Namespace).Delete(jobs.Items[i].Name /*cascadeDeleteOptions(0)*/, nil)
 	}
 	By("Jobs delete")
 }
 
 var _ = Describe("Workflow CRUD", func() {
-
 	It("should create a workflow", func() {
 		workflowClient, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
@@ -87,16 +86,16 @@ var _ = Describe("Workflow CRUD", func() {
 	It("should run to finish a workflow", func() {
 		workflowClient, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
-		myWorkflow := framework.NewWorkflow("dag.example.com", "v1", "workflow1", ns, nil)
+		myWorkflow := framework.NewWorkflow("dag.example.com", "v1", "workflow3", ns, nil)
 		defer func() {
 			deleteWorkflow(workflowClient, myWorkflow)
 			deleteAllJobs(kubeClient, myWorkflow)
 		}()
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "60s", "5s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOChekcAllStepsFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOChekcAllStepsFinished(workflowClient, myWorkflow, ns), "60s", "5s").ShouldNot(HaveOccurred())
 	})
 
 	It("should be able to update workflow", func() {
@@ -200,5 +199,33 @@ var _ = Describe("Workflow CRUD", func() {
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
 		Eventually(framework.HONoWorkflowsShouldRemains(workflowClient, ns), "40s", "1s").ShouldNot(HaveOccurred())
+	})
+
+})
+
+var _ = Describe("Workflow Garbage Collection", func() {
+	It("should delete all jobs for deleted Workflow", func() {
+		workflowClient, kubeClient := framework.BuildAndSetClients()
+		ns := api.NamespaceDefault
+
+		myWorkflow := framework.NewWorkflowWithThreeSteps("dag.example.com", "v1", "workflow-long", ns)
+		defer func() {
+			deleteWorkflow(workflowClient, myWorkflow)
+			deleteAllJobs(kubeClient, myWorkflow)
+		}()
+
+		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+
+		Eventually(framework.HOIsWorkflowStarted(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+
+		// as soon "one" finished...
+		Eventually(framework.HOCheckStepFinished(workflowClient, myWorkflow, "one", ns), "40s", "1s").ShouldNot(HaveOccurred())
+
+		// Delete Workflow
+		Eventually(framework.HODeleteWorkflow(workflowClient, myWorkflow, ns), "40s", "1s").ShouldNot(HaveOccurred())
+
+		// Check all Jobs have been deleted
+		Eventually(framework.HONoJobsShouldRemains(kubeClient, ns), "90s", "5s").ShouldNot(HaveOccurred())
+
 	})
 })
