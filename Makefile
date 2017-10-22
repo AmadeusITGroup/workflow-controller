@@ -29,8 +29,13 @@ build: ${ARTIFACT}
 ${ARTIFACT}: ${SOURCES}
 	CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o ${ARTIFACT} ./main.go
 
-container: build
+container:
 	docker build -t $(PREFIX):$(TAG) .
+
+container_test:
+	touch coverage.txt
+	docker build -t $(PREFIX):tester --target tester .
+	docker run -it --rm --name tester -v $(PWD)/coverage.txt:/go/src/github.com/sdminonne/workflow-controller/coverage.txt $(PREFIX):tester
 
 test:
 	./go.test.sh

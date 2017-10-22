@@ -1,0 +1,22 @@
+.git
+.vscode
+
+charts
+deployments
+docs
+examples
+
+.gitignore
+.travis.yml
+coverage.txt
+glide.*
+README.md
+
+# ignore compiled files
+debug
+test/e2e/e2e.test
+workflow-controller
+
+# ignore vendor tests
+vendor/*/*/test
+vendor/*/*/*/test

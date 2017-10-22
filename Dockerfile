@@ -11,8 +11,39 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# ----- Go Dev Image ------
+#
+FROM golang:1.9 AS godev
 
+# set working directory
+RUN mkdir -p /go/src/github.com/sdminonne/workflow-controller
+WORKDIR /go/src/github.com/sdminonne/workflow-controller
+
+# copy sources
+COPY . .
+
+#
+# ------ Go Test Runner ------
+#
+FROM godev AS tester
+
+# run tests
+ENTRYPOINT ["make"]
+CMD ["test"]
+
+#
+# ------ Go Builder ------
+#
+FROM godev AS builder
+
+# build binary
+RUN make
+
+#
+# ------ Workflow Controller image ------
+#
 FROM busybox
 LABEL maintainer "salvatore-dario.minonne@amadeus.com"
-ADD workflow-controller /workflow-controller
+COPY --from=builder /go/src/github.com/sdminonne/workflow-controller/workflow-controller /workflow-controller
 ENTRYPOINT ["/workflow-controller"]
