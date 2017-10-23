@@ -2,12 +2,13 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: {{ template "fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app: {{ template "name" . }}
     release: {{ .Release.Name }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: 1
   strategy:
     type: Recreate
   template:

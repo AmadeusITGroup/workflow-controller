@@ -1,0 +1,20 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: workflow-controller
+  namespace: kube-system
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: workflow-controller
+    spec:
+      serviceAccount: workflow-controller
+      containers:
+      - name: workflow-controller
+        image: sdminonne/workflow-controller:latest
+        imagePullPolicy: Always
+        args: ["--v=2"]

@@ -1,5 +1,6 @@
-apiVersion: rbac.authorization.k8s.io/v1beta1
+# workflow-controller role
 kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: workflow-controller
 rules:
@@ -7,7 +8,7 @@ rules:
   resources:
   - customresourcedefinitions
   verbs: ["*"]
-- apiGroups: [{{ .Values.apiGroupName | quote }}]
+- apiGroups: ["dag.example.com"]
   resources:
   - workflows
   verbs: ["*"]
@@ -21,8 +22,9 @@ rules:
   verbs: ["list"]
 
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+# Cluster role binding
 kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: workflow-controller
 roleRef:
@@ -31,12 +33,13 @@ roleRef:
   name: workflow-controller
 subjects:
 - kind: ServiceAccount
-  name: {{ .Values.serviceAccount }}
-  namespace: {{ .Release.Namespace }}
+  name: workflow-controller
+  namespace: kube-system
 
 ---
-apiVersion: v1
+# Service Account
 kind: ServiceAccount
+apiVersion: v1
 metadata:
-  name: {{ .Values.serviceAccount }}
-  namespace: {{ .Release.Namespace }}
+  name: workflow-controller
+  namespace: kube-system

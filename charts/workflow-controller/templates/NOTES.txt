@@ -7,7 +7,7 @@ Now you can create your workflow
 an example:
 
 ```yaml
-apiVersion: "{{ .Values.api.groupName }}/v1"
+apiVersion: "{{ .Values.apiGroupName }}/v1"
 kind: Workflow
 metadata:
   name: hello-workflow

@@ -21,8 +21,8 @@ script:
   - make build
   - make test
   - make container
-  - helm install --version latest -n end2end-test charts/workflow-controller
-  - while [ $(kubectl get pod --selector=app=workflow-controller | grep 'workflow-controller' | awk '{print $3}') != "Running" ]; do echo "$(kubectl get pod --selector=app=workflow-controller)"; sleep 5; done
+  - helm install --version latest -n end2end-test charts/workflow-controller --set image.pullPolicy=IfNotPresent
+  - while [ $(kubectl get pod --selector=app=workflow-controller --all-namespaces | grep 'workflow-controller' | awk '{print $4}') != "Running" ]; do echo "$(kubectl get pod --selector=app=workflow-controller --all-namespaces)"; sleep 5; done
   - cd ./test/e2e && go test -c && ./e2e.test --kubeconfig=$HOME/.kube/config --ginkgo.slowSpecThreshold 30
   - helm delete end2end-test
 after_success:
