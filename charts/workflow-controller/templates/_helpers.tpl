@@ -19,7 +19,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 Create a docker images name 
 */}}
 {{- define "docker-image" -}}
-{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- $name := default .Chart.Name .Values.image.name -}}
 {{- $tag := default .Chart.Version .Values.image.tag -}}
 {{- printf "%s%s/%s:%s" .Values.image.registry .Values.image.account $name $tag -}}
 {{- end -}}
