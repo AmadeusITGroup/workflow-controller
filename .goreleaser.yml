@@ -1,0 +1,24 @@
+project_name: workflow-controller
+release:
+  github:
+    owner: sdminonne
+    name: workflow-controller
+builds:
+- goos:
+  - linux
+  goarch:
+  - amd64
+  main: .
+  ldflags: -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+  binary: workflow-controller
+dockers:
+  - image: workflowcontroller/workflow-controller
+    goos: linux
+    goarch: amd64
+    goarm: ''
+    binary: workflow-controller
+    latest: true
+snapshot:
+  name_template: SNAPSHOT-{{ .Commit }}
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
