@@ -1,4 +1,10 @@
 apiVersion: v1
-description: A simple Kubernetes workflow controller.
+description: A simple Kubernetes workflow controller
 name: workflow-controller
-version: 0.1.0
+version: 0.1.1
+keywords:
+- kubernetes
+- workflow
+home: https://github.com/sdminonne/workflow-controller
+sources:
+- https://github.com/sdminonne/workflow-controller
