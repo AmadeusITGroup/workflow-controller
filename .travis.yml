@@ -3,6 +3,10 @@ os: linux
 sudo: required
 services:
   - docker
+addons:
+  apt:
+    packages:
+      - docker-ce
 go:
   - 1.8.3
 go_import_path: github.com/sdminonne/workflow-controller
@@ -18,8 +22,7 @@ install:
   - helm init --service-account tiller
 
 script:
-  - make build
-  - make test
+  - make container_test
   - make container
   - helm install --version latest -n end2end-test charts/workflow-controller --set image.pullPolicy=IfNotPresent
   - while [ $(kubectl get pod --selector=app=workflow-controller --all-namespaces | grep 'workflow-controller' | awk '{print $4}') != "Running" ]; do echo "$(kubectl get pod --selector=app=workflow-controller --all-namespaces)"; sleep 5; done
