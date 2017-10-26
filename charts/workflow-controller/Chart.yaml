@@ -1,7 +1,7 @@
 apiVersion: v1
 description: A simple Kubernetes workflow controller
 name: workflow-controller
-version: 0.1.1
+version: 0.0.0
 keywords:
 - kubernetes
 - workflow

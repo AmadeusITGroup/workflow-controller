@@ -1,29 +1,64 @@
 language: go
-os: linux
-sudo: required
-services:
-  - docker
+dist: trusty
 go:
-  - 1.8.3
+- 1.9.x
+os: linux
+services:
+- docker
+env:
+  global:
+  - TAG=${TRAVIS_TAG:=${TRAVIS_COMMIT}}
+  - GH_URL=https://sdminonne.github.io/workflow-controller
+  - IMAGE_NAME=traviscontroller
 go_import_path: github.com/sdminonne/workflow-controller
 install:
-  - curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
-  - mkdir -p .bin; mv ./kubectl .bin/kubectl && chmod +x .bin/kubectl
-  - export PATH="$TRAVIS_BUILD_DIR/.bin:$PATH"
-  - wget https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.7.sh && chmod +x dind-cluster-v1.7.sh && ./dind-cluster-v1.7.sh up
-  - export PATH="$HOME/.kubeadm-dind-cluster:$PATH"
-  - curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
-  - kubectl -n kube-system create sa tiller
-  - kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
-  - helm init --service-account tiller
+- docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+- curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
+- mkdir -p .bin; mv ./kubectl .bin/kubectl && chmod +x .bin/kubectl
+- export PATH="$TRAVIS_BUILD_DIR/.bin:$PATH"
+- wget https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.8.sh && chmod +x dind-cluster-v1.8.sh && ./dind-cluster-v1.8.sh up
+- export PATH="$HOME/.kubeadm-dind-cluster:$PATH"
+- curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
+- kubectl -n kube-system create sa tiller
+- kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
+- helm init --service-account tiller
 
-script:
-  - make build
-  - make test
-  - make container
-  - helm install --version latest -n end2end-test charts/workflow-controller --set image.pullPolicy=IfNotPresent
-  - while [ $(kubectl get pod --selector=app=workflow-controller --all-namespaces | grep 'workflow-controller' | awk '{print $4}') != "Running" ]; do echo "$(kubectl get pod --selector=app=workflow-controller --all-namespaces)"; sleep 5; done
-  - cd ./test/e2e && go test -c && ./e2e.test --kubeconfig=$HOME/.kube/config --ginkgo.slowSpecThreshold 30
-  - helm delete end2end-test
+stages:
+- name: build
+- name: release
+  if: tag IS present
+jobs:
+  include:
+  - stage: build
+    name: build
+    script:
+    - make build
+    - make test
+    - make TAG=$TAG container
+    - docker tag workflowcontroller/workflow-controller:$TAG workflowcontroller/$IMAGE_NAME:$TAG
+    - docker images
+    - docker push workflowcontroller/$IMAGE_NAME:$TAG
+    - helm install --debug --dry-run --version $TAG -n end2end-test charts/workflow-controller --set image.pullPolicy=IfNotPresent --set image.tag=$TAG --set image.name=$IMAGE_NAME
+    - helm install --version $TAG -n end2end-test charts/workflow-controller --set image.pullPolicy=IfNotPresent --set image.tag=$TAG --set image.name=$IMAGE_NAME
+    - while [ $(kubectl get pod --selector=app=workflow-controller --all-namespaces | grep 'workflow-controller' | awk '{print $4}') != "Running" ]; do echo "$(kubectl get pod --selector=app=workflow-controller --all-namespaces)"; sleep 5; done
+    - cd ./test/e2e && go test -c && ./e2e.test --kubeconfig=$HOME/.kube/config --ginkgo.slowSpecThreshold 30
+    - helm delete end2end-test
+  - stage: release
+    script: |
+      docker login -u $DOCKER_USERNAME" -p $DOCKER_PASSWORD 
+      curl -sL https://git.io/goreleaser | bash
+    deploy:
+    - provider: releases
+      api_key:
+        secure: $GITHUB_TOKEN
+      skip_cleanup: true
+      file:
+      - docs/helm-test-$TAG.tgz
+      on:
+        tags: true
+        branches:
+          only:
+          - master
+          - /^v\d+(\.\d+)+$/
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+- bash <(curl -s https://codecov.io/bash)
