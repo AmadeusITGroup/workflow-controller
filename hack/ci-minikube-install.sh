@@ -28,9 +28,13 @@ export CHANGE_MINIKUBE_NONE_USER=true
 mkdir $HOME/.kube &> /dev/null || true
 touch $HOME/.kube/config
 
+
 minikube config set WantReportErrorPrompt false
 export KUBECONFIG=$HOME/.kube/config
 sudo -E minikube start --vm-driver=none --extra-config=apiserver.InsecureServingOptions.BindAddress="127.0.0.1" --extra-config=apiserver.InsecureServingOptions.BindPort="8080"  --extra-config=apiserver.Authorization.Mode=RBAC
+# disable the installation of kube-dns since we dont use it
+# and it didn't work properly with minikube --vm-driver=node
+minikube addons disable kube-dns
 
 # this for loop waits until kubectl can access the api server that minikube has created
 KUBECTL_UP="false"
@@ -51,6 +55,9 @@ if [ "$KUBECTL_UP" != "true" ]; then
 fi
 # kubectl commands are now able to interact with minikube cluster
 
+# Wait a few that addons are created
+sleep 5
+
 # OPTIONAL depending on kube-dns requirement
 # this for loop waits until the kubernetes addons are active
 KUBE_ADDONS_UP="false"
@@ -58,7 +65,7 @@ for i in {1..150} # timeout for 5 minutes
 do
     # Here we are making sure that kubectl is returning the addon pods for the namespace kube-system
     # Without this check, the second if statement won't be in the proper state for execution
-    if [[ $(kubectl get po -n kube-system -l k8s-app=kube-dns | tail -n +2 | grep "kube-dns") ]]; then
+    # if [[ $(kubectl get po -n kube-system -l k8s-app=kube-dns | tail -n +2 | grep "kube-dns") ]]; then
         # Here we are taking the checking the number of running pods for the namespace kube-system
         # and making sure that the value on each side of the '/' is equal (ex: 3/3 pods running)
         # this is necessary to ensure that all addons have come up
@@ -67,12 +74,12 @@ do
             KUBE_ADDONS_UP="true"
             break
         fi
-    fi
+    # fi
     echo "$(kubectl get po -n kube-system)"
     sleep 2
 done
 if [ "$KUBE_ADDONS_UP" != "true" ]; then
     echo "INIT FAILURE: kubernetes addons did not come up in allotted time"
-    # exit 1
+    exit 1
 fi
 # kube-addons is available for cluster services
