@@ -1,29 +1,66 @@
 language: go
-os: linux
+dist: trusty
 sudo: required
-services:
-  - docker
 go:
-  - 1.8.3
+- 1.9.x
+os: linux
+services:
+- docker
+env:
+  global:
+  - CHANGE_MINIKUBE_NONE_USER=true
+  - TAG=${TRAVIS_TAG:=${TRAVIS_COMMIT}}
+  - GH_URL=https://sdminonne.github.io/workflow-controller
+  - IMAGE_NAME=traviscontroller
 go_import_path: github.com/sdminonne/workflow-controller
+before_install:
+- sudo apt-get -qq update
+- sudo apt-get install -y socat
+- docker run --rm jpetazzo/nsenter cat /nsenter > /tmp/nsenter && chmod +x /tmp/nsenter
+- sudo cp /tmp/nsenter /usr/local/bin
 install:
-  - curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
-  - mkdir -p .bin; mv ./kubectl .bin/kubectl && chmod +x .bin/kubectl
-  - export PATH="$TRAVIS_BUILD_DIR/.bin:$PATH"
-  - wget https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.7.sh && chmod +x dind-cluster-v1.7.sh && ./dind-cluster-v1.7.sh up
-  - export PATH="$HOME/.kubeadm-dind-cluster:$PATH"
-  - curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
-  - kubectl -n kube-system create sa tiller
-  - kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
-  - helm init --service-account tiller
-
-script:
-  - make build
-  - make test
-  - make container
-  - helm install --version latest -n end2end-test charts/workflow-controller --set image.pullPolicy=IfNotPresent
-  - while [ $(kubectl get pod --selector=app=workflow-controller --all-namespaces | grep 'workflow-controller' | awk '{print $4}') != "Running" ]; do echo "$(kubectl get pod --selector=app=workflow-controller --all-namespaces)"; sleep 5; done
-  - cd ./test/e2e && go test -c && ./e2e.test --kubeconfig=$HOME/.kube/config --ginkgo.slowSpecThreshold 30
-  - helm delete end2end-test
+- ./hack/ci-minikube-install.sh
+- minikube docker-env
+- kubectl get nodes
+- kubectl get pods --all-namespaces
+- curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
+- kubectl -n kube-system create sa tiller
+- kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
+- helm init --service-account tiller
+stages:
+- name: build
+- name: release
+  if: tag IS present
+jobs:
+  include:
+  - stage: build
+    name: build
+    script:
+    - make build
+    - make test
+    - make TAG=$TAG container
+    - docker images
+    - kubectl get pods --all-namespaces
+    - helm install --version $TAG -n end2end-test --set image.pullPolicy=IfNotPresent --set image.tag=$TAG charts/workflow-controller
+    - while [ $(kubectl get pod --selector=app=workflow-controller --all-namespaces | grep 'workflow-controller' | awk '{print $4}') != "Running" ]; do echo "$(kubectl get pod --selector=app=workflow-controller --all-namespaces)"; sleep 5; done
+    - cd ./test/e2e && go test -c && ./e2e.test --kubeconfig=$HOME/.kube/config --ginkgo.slowSpecThreshold 30
+    - helm delete end2end-test
+  - stage: release
+    script:
+      - docker login -u "$DOCKER_USERNAME" p "$DOCKER_PASSWORD"
+      - curl -sL https://git.io/goreleaser | bash
+    deploy:
+    - provider: releases
+      api_key:
+        secure: $GITHUB_TOKEN
+      skip_cleanup: true
+      file:
+      - docs/helm-test-$TAG.tgz
+      on:
+        tags: true
+        branches:
+          only:
+          - master
+          - /^v\d+(\.\d+)+$/
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+- bash <(curl -s https://codecov.io/bash)

@@ -41,3 +41,24 @@ $ kubectl create -f  .../examples/hello_workflow/workflow.yaml
 
 ### in an openshift cluster
 TODO
+
+
+### Developper
+
+#### How to release the workflow-controller
+
+This project is using [goreleaser](https://goreleaser.com/) and an additional script for releasing also the Helm chart.
+
+For starting the delivery, you need to clone this repository, then:
+
+```
+zsh hack/release.sh <version> <remove-git>
+```
+
+a concreate example is: ```zsh hack/release.sh v1.0.1 upstream```
+
+This script will:
+- generates locally the helm chart with the requested version.
+- updates the helm repo index file (```index.yaml```) file with the new release.
+- Adds commits and tag the repository with all change and the requested version.
+- Push changeset and tag to the remote git repository.
