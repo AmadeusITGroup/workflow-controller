@@ -228,6 +228,22 @@ func HONoWorkflowsShouldRemains(workflowClient versioned.Interface, namespace st
 	}
 }
 
+// HONoJobsShouldRemains is an higher order func that returns the func that checks whether some jobs are still present
+func HONoJobsShouldRemains(kubeClient clientset.Interface, namespace string) func() error {
+	return func() error {
+		jobs, err := kubeClient.Batch().Jobs(namespace).List(metav1.ListOptions{})
+		if err != nil {
+			Logf("Cannot list jobs: %v", err)
+			return err
+		}
+		if len(jobs.Items) == 0 {
+			Logf("no jobs found")
+			return nil // OK jobs removed or never created
+		}
+		return fmt.Errorf("still some jobs found")
+	}
+}
+
 // HODeleteWorkflow is an higher order func that returns the func to remove the Workflow
 func HODeleteWorkflow(workflowClient versioned.Interface, workflow *wapi.Workflow, namespace string) func() error {
 	return func() error {
