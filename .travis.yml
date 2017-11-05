@@ -63,4 +63,4 @@ jobs:
           - master
           - /^v\d+(\.\d+)+$/
 after_success:
-- bash <(curl -s https://codecov.io/bash)
+- bash <(curl -s https://codecov.io/bash) -f $TRAVIS_BUILD_DIR/.cover/cover.out
