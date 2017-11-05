@@ -169,6 +169,21 @@ func (w *WorkflowController) enqueue(workflow *wapi.Workflow) {
 	w.queue.Add(key)
 }
 
+// get workflow by key method
+func (w *WorkflowController) getWorkflowByKey(key string) (*wapi.Workflow, error) {
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		return nil, err
+	}
+	glog.V(6).Infof("Syncing %s/%s", namespace, name)
+	workflow, err := w.WorkflowLister.Workflows(namespace).Get(name)
+	if err != nil {
+		glog.Errorf("unable to get Workflow %s/%s: %v. Maybe deleted", namespace, name, err)
+		return nil, err
+	}
+	return workflow, nil
+}
+
 // workflow sync method
 func (w *WorkflowController) sync(key string) error {
 	startTime := time.Now()
@@ -176,16 +191,15 @@ func (w *WorkflowController) sync(key string) error {
 		glog.V(6).Infof("Finished syncing Workflow %q (%v", key, time.Now().Sub(startTime))
 	}()
 
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		return err
-	}
-	glog.V(6).Infof("Syncing %s/%s", namespace, name)
-	sharedWorkflow, err := w.WorkflowLister.Workflows(namespace).Get(name)
-	if err != nil {
-		glog.Errorf("unable to get Workflow %s/%s: %v. Maybe deleted", namespace, name, err)
+	var sharedWorkflow *wapi.Workflow
+	var err error
+	if sharedWorkflow, err = w.getWorkflowByKey(key); err != nil {
+		glog.Errorf("unable to get Workflow %s: %v. Maybe deleted", key, err)
 		return nil
 	}
+	namespace := sharedWorkflow.Namespace
+	name := sharedWorkflow.Name
+
 	if !wapi.IsWorkflowDefaulted(sharedWorkflow) {
 		defaultedWorkflow := wapi.DefaultWorkflow(sharedWorkflow)
 		if err := w.updateHandler(defaultedWorkflow); err != nil {
@@ -498,7 +512,8 @@ func (w *WorkflowController) manageWorkflowJobStep(workflow *wapi.Workflow, step
 			stepStatus = &wapi.WorkflowStepStatus{
 				Name:      stepName,
 				Complete:  jobFinished,
-				Reference: *reference}
+				Reference: *reference,
+			}
 			workflow.Status.Statuses = append(workflow.Status.Statuses, *stepStatus)
 			workflowUpdated = true
 		}
