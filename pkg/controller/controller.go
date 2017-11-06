@@ -61,6 +61,7 @@ type WorkflowController struct {
 	JobControl JobControlInterface
 
 	updateHandler func(*wapi.Workflow) error // callback to upate Workflow. Added as member for testing
+	syncHandler   func(string) error
 
 	queue workqueue.RateLimitingInterface // Workflows to be synced
 
@@ -116,6 +117,7 @@ func NewWorkflowController(
 	)
 	wc.JobControl = &WorkflowJobControl{kubeClient, wc.Recorder}
 	wc.updateHandler = wc.updateWorkflow
+	wc.syncHandler = wc.sync
 
 	return wc
 }
@@ -147,7 +149,7 @@ func (w *WorkflowController) processNextItem() bool {
 		return false
 	}
 	defer w.queue.Done(key)
-	err := w.sync(key.(string))
+	err := w.syncHandler(key.(string))
 	if err == nil {
 		w.queue.Forget(key)
 		return true

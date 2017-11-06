@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -11,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kubeinformers "k8s.io/client-go/informers"
-
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -303,6 +303,82 @@ func TestControllerSyncWorkflow(t *testing.T) {
 		// validate expectations
 		if IsWorkflowFinished(tweakedWorkflow) != tc.expectedWorkflowFinished {
 			t.Errorf("%s - expected workflow FINISHED to be equal to '%v'", name, tc.expectedWorkflowFinished)
+		}
+	}
+}
+
+func TestControllerRun(t *testing.T) {
+	testCases := map[string]struct {
+		keys           []string
+		JobSynced      cache.InformerSynced
+		WorkflowSynced cache.InformerSynced
+		syncHandler    func(string) error
+		// expected
+		expectedError        bool
+		expectedErrorMessage string
+	}{
+		"happy run": {
+			keys:           []string{"default/wf1", "default/wf2", "default/wf3", "default/last"},
+			JobSynced:      func() bool { return true },
+			WorkflowSynced: func() bool { return true },
+		},
+		"no sync for Job": {
+			keys:                 []string{"default/wf1", "default/wf2", "default/wf3", "default/last"},
+			JobSynced:            func() bool { return false },
+			WorkflowSynced:       func() bool { return true },
+			expectedError:        true,
+			expectedErrorMessage: "Timed out waiting for caches to sync",
+		},
+		"no sync for Workflow": {
+			keys:                 []string{"default/wf1", "default/wf2", "default/wf3", "default/last"},
+			JobSynced:            func() bool { return true },
+			WorkflowSynced:       func() bool { return false },
+			expectedError:        true,
+			expectedErrorMessage: "Timed out waiting for caches to sync",
+		},
+		"error during sync": {
+			keys:                 []string{"default/wf1", "default/wf2", "default/error", "default/last"},
+			JobSynced:            func() bool { return true },
+			WorkflowSynced:       func() bool { return true },
+			expectedError:        true,
+			expectedErrorMessage: "WorkflowController.sync - Workflow deafult/error not valid",
+		},
+	}
+	for name, tc := range testCases {
+		// print test case nae
+		fmt.Printf("Running '%s' test case ...\n", name)
+		// workflow controller setup
+		restConfig := &rest.Config{Host: "localhost"}
+		workflowClient, err := wclient.NewClient(restConfig)
+		if err != nil {
+			t.Fatalf("%s:%v", name, err)
+		}
+		kubeClient := clientset.NewForConfigOrDie(restConfig)
+		controller, _, _ := newWorkflowControllerFromClients(kubeClient, workflowClient)
+		controller.JobSynced = tc.JobSynced
+		controller.WorkflowSynced = tc.WorkflowSynced
+		controller.syncHandler = func(key string) error {
+			if key == "default/last" {
+				controller.queue.ShutDown()
+			} else if key == "default/error" {
+				return fmt.Errorf(tc.expectedErrorMessage)
+			}
+			return nil
+		}
+		for _, k := range tc.keys {
+			controller.queue.Add(k)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		if err := controller.Run(ctx); err != nil && err != context.DeadlineExceeded {
+			if tc.expectedError {
+				if err.Error() != tc.expectedErrorMessage {
+					t.Errorf("%s: %v", name, err)
+				}
+			} else {
+				t.Errorf("%s: %v", name, err)
+			}
 		}
 	}
 }
