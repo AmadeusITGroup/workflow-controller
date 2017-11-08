@@ -476,11 +476,11 @@ func (w *WorkflowController) manageWorkflowJobStep(workflow *wapi.Workflow, step
 	for _, dependencyName := range step.Dependencies {
 		dependencyStatus := GetStepStatusByName(workflow, dependencyName)
 		if dependencyStatus == nil || !dependencyStatus.Complete {
-			glog.V(4).Infof("Workflow %s/%s: dependecy %q not satisfied for %q", workflow.Namespace, workflow.Name, dependencyName, stepName)
+			glog.V(4).Infof("Workflow %s/%s: dependency %q not satisfied for %q", workflow.Namespace, workflow.Name, dependencyName, stepName)
 			return workflowUpdated
 		}
 	}
-	glog.V(6).Infof("Workflow %s/%s: All dependecy satisfied for %q", workflow.Namespace, workflow.Name, stepName)
+	glog.V(6).Infof("Workflow %s/%s: All dependency satisfied for %q", workflow.Namespace, workflow.Name, stepName)
 	jobs, err := w.retrieveJobsStep(workflow, step.JobTemplate, stepName)
 	if err != nil {
 		glog.Errorf("unable to retrieve step jobs for Workflow %s/%s, step:%q: %v", workflow.Namespace, workflow.Name, stepName, err)

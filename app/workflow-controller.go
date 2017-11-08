@@ -18,6 +18,9 @@ package app
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -94,7 +97,7 @@ func NewWorkflowController(c *Config) *WorkflowController {
 func (c *WorkflowController) Run() {
 	if c.controller != nil {
 		ctx, cancelFunc := context.WithCancel(context.Background())
-		defer cancelFunc()
+		go handleSignal(cancelFunc)
 		c.kubeInformerFactory.Start(ctx.Done())
 		c.workflowInformerFactory.Start(ctx.Done())
 		c.runGC(ctx)
@@ -115,4 +118,17 @@ func (c *WorkflowController) runGC(ctx context.Context) {
 			}
 		}, garbagecollector.Interval, ctx.Done())
 	}()
+}
+
+func handleSignal(cancelFunc context.CancelFunc) {
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	sig := <-sigc
+	glog.Infof("Signal received: %s, stop the process", sig.String())
+	cancelFunc()
+	close(sigc)
 }
