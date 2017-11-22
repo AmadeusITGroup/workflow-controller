@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/golang/glog"
-	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
+	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 )
 
 // JobControlInterface defines interface to control Jobs life-cycle.

@@ -10,9 +10,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
-	"github.com/sdminonne/workflow-controller/pkg/client/versioned"
-	"github.com/sdminonne/workflow-controller/test/e2e/framework"
+	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	"github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
+	"github.com/amadeusitgroup/workflow-controller/test/e2e/framework"
 )
 
 func deleteWorkflow(workflowClient versioned.Interface, workflow *wapi.Workflow) {

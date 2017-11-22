@@ -2,8 +2,8 @@
 package v1
 
 import (
-	v1 "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
-	"github.com/sdminonne/workflow-controller/pkg/client/versioned/scheme"
+	v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	"github.com/amadeusitgroup/workflow-controller/pkg/client/versioned/scheme"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )

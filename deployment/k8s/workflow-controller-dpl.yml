@@ -15,6 +15,6 @@ spec:
       serviceAccount: workflow-controller
       containers:
       - name: workflow-controller
-        image: sdminonne/workflow-controller:latest
+        image: amadeusitgroup/workflow-controller:latest
         imagePullPolicy: Always
         args: ["--v=2"]

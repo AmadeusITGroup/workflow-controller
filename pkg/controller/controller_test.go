@@ -16,10 +16,10 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
-	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
-	wclient "github.com/sdminonne/workflow-controller/pkg/client"
-	winformers "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions"
-	"github.com/sdminonne/workflow-controller/pkg/client/versioned"
+	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	wclient "github.com/amadeusitgroup/workflow-controller/pkg/client"
+	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
+	"github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
 )
 
 var workflowsKind = schema.GroupVersionKind{Group: "workflow", Version: "v1", Kind: "Workflow"}

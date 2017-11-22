@@ -2,7 +2,7 @@
 package fake
 
 import (
-	v1 "github.com/sdminonne/workflow-controller/pkg/client/versioned/typed/workflow/v1"
+	v1 "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned/typed/workflow/v1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )

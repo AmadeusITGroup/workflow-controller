@@ -2,4 +2,4 @@
 
 ## Next release
 
-- Helm chart delivery in https://sdminonne.github.io/workflow-controller/
+- Helm chart delivery in https://amadeusitgroup.github.io/workflow-controller/

@@ -5,8 +5,8 @@
 package workflow
 
 import (
-	internalinterfaces "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions/workflow/v1"
+	internalinterfaces "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
+	v1 "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/workflow/v1"
 )
 
 // Interface provides access to each of this group's versions.

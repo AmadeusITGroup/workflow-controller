@@ -5,10 +5,10 @@
 package v1
 
 import (
-	workflow_v1 "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
-	internalinterfaces "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/sdminonne/workflow-controller/pkg/client/listers/workflow/v1"
-	versioned "github.com/sdminonne/workflow-controller/pkg/client/versioned"
+	workflow_v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	internalinterfaces "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
+	v1 "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/workflow/v1"
+	versioned "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"

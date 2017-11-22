@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/sdminonne/workflow-controller/pkg/api/workflow"
+	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
 )
 
 // Install registers the API group and adds types to a scheme

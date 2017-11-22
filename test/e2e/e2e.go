@@ -5,7 +5,7 @@ import (
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
-	_ "github.com/sdminonne/workflow-controller/test/e2e/framework"
+	_ "github.com/amadeusitgroup/workflow-controller/test/e2e/framework"
 )
 
 // RunE2ETests runs e2e test

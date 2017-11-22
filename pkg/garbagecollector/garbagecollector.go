@@ -14,11 +14,11 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
-	winformers "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions"
-	wlisters "github.com/sdminonne/workflow-controller/pkg/client/listers/workflow/v1"
-	wclientset "github.com/sdminonne/workflow-controller/pkg/client/versioned"
+	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
+	wlisters "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/workflow/v1"
+	wclientset "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
 
-	"github.com/sdminonne/workflow-controller/pkg/controller"
+	"github.com/amadeusitgroup/workflow-controller/pkg/controller"
 )
 
 const (

@@ -13,11 +13,11 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 
-	"github.com/sdminonne/workflow-controller/pkg/api/workflow"
-	"github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
-	wlister "github.com/sdminonne/workflow-controller/pkg/client/listers/workflow/v1"
-	wfake "github.com/sdminonne/workflow-controller/pkg/client/versioned/fake"
-	"github.com/sdminonne/workflow-controller/pkg/controller"
+	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
+	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	wlister "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/workflow/v1"
+	wfake "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned/fake"
+	"github.com/amadeusitgroup/workflow-controller/pkg/controller"
 )
 
 type FakeWorkflowLister struct {
