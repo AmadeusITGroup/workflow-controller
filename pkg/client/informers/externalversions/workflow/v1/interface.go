@@ -5,7 +5,7 @@
 package v1
 
 import (
-	internalinterfaces "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
+	internalinterfaces "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to all the informers in this group version.

@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
+	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 )
 
 // IsWorkflowFinished checks wether a workflow is finished. A workflow is finished if one of its condition is Complete or Failed.

@@ -10,9 +10,9 @@ env:
   global:
   - CHANGE_MINIKUBE_NONE_USER=true
   - TAG=${TRAVIS_TAG:=${TRAVIS_COMMIT}}
-  - GH_URL=https://sdminonne.github.io/workflow-controller
+  - GH_URL=https://amadeusitgroup.github.io/workflow-controller
   - IMAGE_NAME=traviscontroller
-go_import_path: github.com/sdminonne/workflow-controller
+go_import_path: github.com/amadeusitgroup/workflow-controller
 before_install:
 - sudo apt-get -qq update
 - sudo apt-get install -y socat

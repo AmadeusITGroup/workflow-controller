@@ -8,5 +8,5 @@ fi
 cd $(git rev-parse --show-toplevel)
 helm package --version "$1" charts/workflow-controller
 mv "helm-test-$1.tgz" docs/
-helm repo index docs --url https://sdminonne.github.io/workflow-controller/ --merge docs/index.yaml
+helm repo index docs --url https://amadeusitgroup.github.io/workflow-controller/ --merge docs/index.yaml
 git add --all docs/

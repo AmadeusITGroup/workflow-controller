@@ -2,9 +2,9 @@
 package fake
 
 import (
-	clientset "github.com/sdminonne/workflow-controller/pkg/client/versioned"
-	workflowv1 "github.com/sdminonne/workflow-controller/pkg/client/versioned/typed/workflow/v1"
-	fakeworkflowv1 "github.com/sdminonne/workflow-controller/pkg/client/versioned/typed/workflow/v1/fake"
+	clientset "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
+	workflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned/typed/workflow/v1"
+	fakeworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned/typed/workflow/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

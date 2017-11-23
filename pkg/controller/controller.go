@@ -28,11 +28,11 @@ import (
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/workqueue"
 
-	wapi "github.com/sdminonne/workflow-controller/pkg/api/workflow/v1"
+	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 
-	winformers "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions"
-	wlisters "github.com/sdminonne/workflow-controller/pkg/client/listers/workflow/v1"
-	wclientset "github.com/sdminonne/workflow-controller/pkg/client/versioned"
+	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
+	wlisters "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/workflow/v1"
+	wclientset "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
 )
 
 // WorkflowControllerConfig contains info to customize Workflow controller behaviour

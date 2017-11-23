@@ -3,9 +3,9 @@
 [![Join the chat at https://gitter.im/workflow-controller/Lobby](https://badges.gitter.im/workflow-controller/Lobby.svg)](https://gitter.im/workflow-controller/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ### Build Status
-[![Build Status](https://travis-ci.org/sdminonne/workflow-controller.svg?branch=master)](https://travis-ci.org/sdminonne/workflow-controller)
-[![Go Report Card](https://goreportcard.com/badge/github.com/sdminonne/workflow-controller)](https://goreportcard.com/report/github.com/sdminonne/workflow-controller)
-[![codecov](https://codecov.io/gh/sdminonne/workflow-controller/branch/master/graph/badge.svg)](https://codecov.io/gh/sdminonne/workflow-controller)
+[![Build Status](https://travis-ci.org/amadeusitgroup/workflow-controller.svg?branch=master)](https://travis-ci.org/amadeusitgroup/workflow-controller)
+[![Go Report Card](https://goreportcard.com/badge/github.com/amadeusitgroup/workflow-controller)](https://goreportcard.com/report/github.com/amadeusitgroup/workflow-controller)
+[![codecov](https://codecov.io/gh/amadeusitgroup/workflow-controller/branch/master/graph/badge.svg)](https://codecov.io/gh/amadeusitgroup/workflow-controller)
 ![DopeBadge](https://img.shields.io/badge/Hightower-dope-C0C0C0.svg)
 
 A simple Kubernetes workflow controller. TODO: add more explanations.

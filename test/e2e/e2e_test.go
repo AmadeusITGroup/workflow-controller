@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sdminonne/workflow-controller/test/e2e/framework"
+	"github.com/amadeusitgroup/workflow-controller/test/e2e/framework"
 	"github.com/spf13/pflag"
 )
 

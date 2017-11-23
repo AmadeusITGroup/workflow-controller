@@ -20,7 +20,7 @@ import (
 	goflag "flag"
 	"runtime"
 
-	"github.com/sdminonne/workflow-controller/app"
+	"github.com/amadeusitgroup/workflow-controller/app"
 	"github.com/spf13/pflag"
 )
 

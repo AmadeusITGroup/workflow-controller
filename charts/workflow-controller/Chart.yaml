@@ -5,6 +5,6 @@ version: 0.0.0
 keywords:
 - kubernetes
 - workflow
-home: https://github.com/sdminonne/workflow-controller
+home: https://github.com/amadeusitgroup/workflow-controller
 sources:
-- https://github.com/sdminonne/workflow-controller
+- https://github.com/amadeusitgroup/workflow-controller

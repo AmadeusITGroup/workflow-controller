@@ -36,10 +36,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
-	wclient "github.com/sdminonne/workflow-controller/pkg/client"
-	winformers "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions"
-	"github.com/sdminonne/workflow-controller/pkg/controller"
-	"github.com/sdminonne/workflow-controller/pkg/garbagecollector"
+	wclient "github.com/amadeusitgroup/workflow-controller/pkg/client"
+	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
+	"github.com/amadeusitgroup/workflow-controller/pkg/controller"
+	"github.com/amadeusitgroup/workflow-controller/pkg/garbagecollector"
 )
 
 // WorkflowController contains all info to run the worklow controller app

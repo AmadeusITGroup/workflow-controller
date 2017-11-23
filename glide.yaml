@@ -1,4 +1,4 @@
-package: github.com/sdminonne/workflow-controller
+package: github.com/amadeusitgroup/workflow-controller
 import:
 - package: github.com/golang/glog
 - package: github.com/onsi/ginkgo

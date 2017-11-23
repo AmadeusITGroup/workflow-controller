@@ -1,7 +1,7 @@
 project_name: workflow-controller
 release:
   github:
-    owner: sdminonne
+    owner: amadeusitgroup
     name: workflow-controller
 builds:
 - goos:

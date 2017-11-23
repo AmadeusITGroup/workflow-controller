@@ -5,7 +5,7 @@
 package internalinterfaces
 
 import (
-	versioned "github.com/sdminonne/workflow-controller/pkg/client/versioned"
+	versioned "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	cache "k8s.io/client-go/tools/cache"
 	time "time"

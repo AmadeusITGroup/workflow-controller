@@ -5,15 +5,16 @@
 package externalversions
 
 import (
-	internalinterfaces "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
-	workflow "github.com/sdminonne/workflow-controller/pkg/client/informers/externalversions/workflow"
-	versioned "github.com/sdminonne/workflow-controller/pkg/client/versioned"
-	runtime "k8s.io/apimachinery/pkg/runtime"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
-	cache "k8s.io/client-go/tools/cache"
 	reflect "reflect"
 	sync "sync"
 	time "time"
+
+	internalinterfaces "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
+	workflow "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/workflow"
+	versioned "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
+	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 type sharedInformerFactory struct {
