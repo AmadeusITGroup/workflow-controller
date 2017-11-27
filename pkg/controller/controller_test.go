@@ -10,7 +10,6 @@ import (
 	batchv2 "k8s.io/api/batch/v2alpha1"
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	kubeinformers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -21,8 +20,6 @@ import (
 	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
 	"github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
 )
-
-var workflowsKind = schema.GroupVersionKind{Group: "workflow", Version: "v1", Kind: "Workflow"}
 
 // utility function to create a basic Workflow with steps
 func newWorkflow(count int32, startTime *metav1.Time) *wapi.Workflow {
@@ -110,11 +107,10 @@ func newJobList(count int32, fromIndex int32, status batch.JobConditionType, wor
 		// create Job
 		newJob := batch.Job{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            stepName,
-				Labels:          labels,
-				Namespace:       workflow.Namespace,
-				SelfLink:        "/apiv1s/extensions/v1beta1/namespaces/default/jobs/job",
-				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(workflow, workflowsKind)},
+				Name:      stepName,
+				Labels:    labels,
+				Namespace: workflow.Namespace,
+				SelfLink:  "/apiv1s/extensions/v1beta1/namespaces/default/jobs/job",
 			},
 			Status: batch.JobStatus{
 				Conditions: []batch.JobCondition{condition},
@@ -345,9 +341,6 @@ func TestControllerRun(t *testing.T) {
 		},
 	}
 	for name, tc := range testCases {
-		// print test case nae
-		fmt.Printf("Running '%s' test case ...\n", name)
-		// workflow controller setup
 		restConfig := &rest.Config{Host: "localhost"}
 		workflowClient, err := wclient.NewClient(restConfig)
 		if err != nil {
@@ -357,11 +350,12 @@ func TestControllerRun(t *testing.T) {
 		controller, _, _ := newWorkflowControllerFromClients(kubeClient, workflowClient)
 		controller.JobSynced = tc.JobSynced
 		controller.WorkflowSynced = tc.WorkflowSynced
+		expectedErrorMessage := tc.expectedErrorMessage
 		controller.syncHandler = func(key string) error {
 			if key == "default/last" {
 				controller.queue.ShutDown()
 			} else if key == "default/error" {
-				return fmt.Errorf(tc.expectedErrorMessage)
+				return fmt.Errorf(expectedErrorMessage)
 			}
 			return nil
 		}
@@ -373,7 +367,7 @@ func TestControllerRun(t *testing.T) {
 		defer cancel()
 		if err := controller.Run(ctx); err != nil && err != context.DeadlineExceeded {
 			if tc.expectedError {
-				if err.Error() != tc.expectedErrorMessage {
+				if err.Error() != expectedErrorMessage {
 					t.Errorf("%s: %v", name, err)
 				}
 			} else {
