@@ -18,6 +18,8 @@ package app
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -26,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/golang/glog"
+	"github.com/heptiolabs/healthcheck"
 
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -48,6 +51,7 @@ type WorkflowController struct {
 	workflowInformerFactory winformers.SharedInformerFactory
 	controller              *controller.WorkflowController
 	GC                      *garbagecollector.GarbageCollector
+	httpServer              *http.Server // Used for Probes and later prometheus
 }
 
 func initKubeConfig(c *Config) (*rest.Config, error) {
@@ -85,11 +89,17 @@ func NewWorkflowController(c *Config) *WorkflowController {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	workflowInformerFactory := winformers.NewSharedInformerFactory(workflowClient, time.Second*30)
 
+	ctrl := controller.NewWorkflowController(workflowClient, kubeClient, kubeInformerFactory, workflowInformerFactory)
+
+	// configure readiness and liveness probes
+	health := configureHealth(ctrl)
+
 	return &WorkflowController{
 		kubeInformerFactory:     kubeInformerFactory,
 		workflowInformerFactory: workflowInformerFactory,
-		controller:              controller.NewWorkflowController(workflowClient, kubeClient, kubeInformerFactory, workflowInformerFactory),
+		controller:              ctrl,
 		GC:                      garbagecollector.NewGarbageCollector(workflowClient, kubeClient, workflowInformerFactory),
+		httpServer:              &http.Server{Addr: c.ListenHTTPAddr, Handler: health},
 	}
 }
 
@@ -101,8 +111,8 @@ func (c *WorkflowController) Run() {
 		c.kubeInformerFactory.Start(ctx.Done())
 		c.workflowInformerFactory.Start(ctx.Done())
 		c.runGC(ctx)
+		go c.runHTTPServer(ctx)
 		c.controller.Run(ctx)
-
 	}
 }
 
@@ -118,6 +128,39 @@ func (c *WorkflowController) runGC(ctx context.Context) {
 			}
 		}, garbagecollector.Interval, ctx.Done())
 	}()
+}
+
+func configureHealth(c *controller.WorkflowController) healthcheck.Handler {
+	health := healthcheck.NewHandler()
+	health.AddReadinessCheck("Workflow_cache_sync", func() error {
+		if c.WorkflowSynced() {
+			return nil
+		}
+		return fmt.Errorf("Workflow cache not sync")
+	})
+	health.AddReadinessCheck("Job_cache_sync", func() error {
+		if c.JobSynced() {
+			return nil
+		}
+		return fmt.Errorf("Job cache not sync")
+	})
+
+	return health
+}
+
+func (c *WorkflowController) runHTTPServer(ctx context.Context) error {
+
+	go func() {
+		glog.Info("Listening on http://%s\n", c.httpServer.Addr)
+
+		if err := c.httpServer.ListenAndServe(); err != nil {
+			glog.Error("Http server error: ", err)
+		}
+	}()
+
+	<-ctx.Done()
+	glog.Info("Shutting down the http server...")
+	return c.httpServer.Shutdown(context.Background())
 }
 
 func handleSignal(cancelFunc context.CancelFunc) {
