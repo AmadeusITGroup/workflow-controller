@@ -24,7 +24,8 @@ package externalversions
 import (
 	"fmt"
 
-	v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow/v1"
+	workflow_v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -55,8 +56,12 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=workflow, Version=v1
-	case v1.SchemeGroupVersion.WithResource("workflows"):
+	// Group=cronworkflow, Version=v1
+	case v1.SchemeGroupVersion.WithResource("cronworkflows"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Cronworkflow().V1().CronWorkflows().Informer()}, nil
+
+		// Group=workflow, Version=v1
+	case workflow_v1.SchemeGroupVersion.WithResource("workflows"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Workflow().V1().Workflows().Informer()}, nil
 
 	}

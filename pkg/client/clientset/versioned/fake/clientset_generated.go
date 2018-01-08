@@ -20,6 +20,8 @@ package fake
 
 import (
 	clientset "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
+	cronworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/cronworkflow/v1"
+	fakecronworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/cronworkflow/v1/fake"
 	workflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/workflow/v1"
 	fakeworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/workflow/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -61,6 +63,16 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 }
 
 var _ clientset.Interface = &Clientset{}
+
+// CronworkflowV1 retrieves the CronworkflowV1Client
+func (c *Clientset) CronworkflowV1() cronworkflowv1.CronworkflowV1Interface {
+	return &fakecronworkflowv1.FakeCronworkflowV1{Fake: &c.Fake}
+}
+
+// Cronworkflow retrieves the CronworkflowV1Client
+func (c *Clientset) Cronworkflow() cronworkflowv1.CronworkflowV1Interface {
+	return &fakecronworkflowv1.FakeCronworkflowV1{Fake: &c.Fake}
+}
 
 // WorkflowV1 retrieves the WorkflowV1Client
 func (c *Clientset) WorkflowV1() workflowv1.WorkflowV1Interface {

@@ -6,14 +6,14 @@ import (
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
+	"github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow"
 )
 
 // Install registers the API group and adds types to a scheme
 func Install(groupFactoryRegistry announced.APIGroupFactoryRegistry, registry *registered.APIRegistrationManager, scheme *runtime.Scheme) {
 	if err := announced.NewGroupMetaFactory(
 		&announced.GroupMetaFactoryArgs{
-			GroupName:              workflow.GroupName,
+			GroupName:              cronworkflow.GroupName,
 			VersionPreferenceOrder: []string{v1alpha1.SchemeGroupVersion.Version},
 		},
 		announced.VersionToSchemeFunc{
