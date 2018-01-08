@@ -62,6 +62,7 @@ zsh hack/release.sh <version> <remove-git>
 a concreate example is: ```zsh hack/release.sh v1.0.1 upstream```
 
 This script will:
+
 - generates locally the helm chart with the requested version.
 - updates the helm repo index file (```index.yaml```) file with the new release.
 - Adds commits and tag the repository with all change and the requested version.
