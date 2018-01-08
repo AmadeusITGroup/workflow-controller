@@ -14,8 +14,8 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/golang/glog"
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	"github.com/golang/glog"
 )
 
 // JobControlInterface defines interface to control Jobs life-cycle.
@@ -37,7 +37,7 @@ var _ JobControlInterface = &WorkflowJobControl{}
 
 // CreateJob creates a Job According to a specific JobTemplateSpec
 func (w WorkflowJobControl) CreateJob(namespace string, template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, stepName string) (*batch.Job, error) {
-	job, err := initJob(template, workflow, stepName)
+	job, err := initJob(template, workflow, stepName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create job: %v", err)
 	}
@@ -61,7 +61,7 @@ func (w WorkflowJobControl) DeleteJob(namespace, jobName string, object runtime.
 	return nil
 }
 
-func initJob(template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, stepName string) (*batch.Job, error) {
+func initJob(template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, stepName string, owner *metav1.OwnerReference) (*batch.Job, error) {
 	desiredLabels, err := getJobLabelsSet(workflow, template, stepName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize Job for Workflow %s/%s step %s: %v", workflow.Namespace, workflow.Name, stepName, err)
@@ -78,6 +78,8 @@ func initJob(template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, stepNam
 			GenerateName: jobGeneratedName, // TODO: double check prefix
 		},
 	}
+
+	job.ObjectMeta.OwnerReferences = append(job.ObjectMeta.OwnerReferences, buildOwnerReference(workflow))
 	job.Spec = *template.Spec.DeepCopy()
 	return job, nil
 }
