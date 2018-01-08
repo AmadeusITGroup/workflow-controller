@@ -93,6 +93,23 @@ func inferrWorkflowLabelSelectorForJobs(workflow *wapi.Workflow) labels.Selector
 	return labels.SelectorFromSet(set)
 }
 
+func buildOwnerReference(workflow *wapi.Workflow) metav1.OwnerReference {
+	controllerRef := metav1.OwnerReference{
+		APIVersion:         wapi.SchemeGroupVersion.String(),
+		Kind:               wapi.ResourceKind,
+		Name:               workflow.Name,
+		UID:                workflow.UID,
+		BlockOwnerDeletion: boolPtr(true),
+		Controller:         boolPtr(true),
+	}
+
+	return controllerRef
+}
+
+func boolPtr(value bool) *bool {
+	return &value
+}
+
 // IsJobFinished checks whether a Job is finished
 func IsJobFinished(j *batch.Job) bool {
 	for _, c := range j.Status.Conditions {
