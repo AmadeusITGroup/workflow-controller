@@ -55,7 +55,7 @@ jobs:
         secure: $GITHUB_TOKEN
       skip_cleanup: true
       file:
-      - docs/helm-test-$TAG.tgz
+      - docs/workflow-controller-$TAG.tgz
       on:
         tags: true
         branches:
