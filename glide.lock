@@ -1,6 +1,10 @@
-hash: b39fe57979b1c82e2b080977b4bf5fad5f915902d29c6dc482cc3c3121517db3
-updated: 2017-09-26T11:44:09.868434592+02:00
+hash: d5cdcd5da98ae28aa1ea0903b570b61868b138f289af20fd390a991becb1a8ef
+updated: 2018-01-05T16:56:01.451600009+01:00
 imports:
+- name: github.com/beorn7/perks
+  version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
+  subpackages:
+  - quantile
 - name: github.com/davecgh/go-spew
   version: 782f4967f2dc4564575ca782fe2d04090b5faca8
   subpackages:
@@ -59,6 +63,8 @@ imports:
   version: a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4
   subpackages:
   - simplelru
+- name: github.com/heptiolabs/healthcheck
+  version: da5fdee475fb09de87c5d4a50da233b7d28767b1
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/imdario/mergo
@@ -73,6 +79,10 @@ imports:
   - buffer
   - jlexer
   - jwriter
+- name: github.com/matttproud/golang_protobuf_extensions
+  version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
+  subpackages:
+  - pbutil
 - name: github.com/onsi/ginkgo
   version: 9eda700730cba42af70d53180f9dcce9266bc2bc
   subpackages:
@@ -109,6 +119,24 @@ imports:
   - types
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
+- name: github.com/prometheus/client_golang
+  version: c5b7fccd204277076155f10851dad72b76a49317
+  subpackages:
+  - prometheus
+- name: github.com/prometheus/client_model
+  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
+  subpackages:
+  - go
+- name: github.com/prometheus/common
+  version: 13ba4ddd0caa9c28ca7b7bffe1dfa9ed8d5ef207
+  subpackages:
+  - expfmt
+  - internal/bitbucket.org/ww/goautoneg
+  - model
+- name: github.com/prometheus/procfs
+  version: 65c1f6f8f0fc1e2185eb9863a3bc751496404259
+  subpackages:
+  - xfs
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
@@ -210,6 +238,9 @@ imports:
   - pkg/api/meta
   - pkg/api/resource
   - pkg/api/validation
+  - pkg/apimachinery
+  - pkg/apimachinery/announced
+  - pkg/apimachinery/registered
   - pkg/apis/meta/internalversion
   - pkg/apis/meta/v1
   - pkg/apis/meta/v1/unstructured
@@ -254,36 +285,117 @@ imports:
   version: 82aa063804cf055e16e8911250f888bc216e8b61
   subpackages:
   - discovery
+  - discovery/fake
+  - informers
+  - informers/admissionregistration
+  - informers/admissionregistration/v1alpha1
+  - informers/apps
+  - informers/apps/v1beta1
+  - informers/apps/v1beta2
+  - informers/autoscaling
+  - informers/autoscaling/v1
+  - informers/autoscaling/v2beta1
+  - informers/batch
+  - informers/batch/v1
+  - informers/batch/v1beta1
+  - informers/batch/v2alpha1
+  - informers/certificates
+  - informers/certificates/v1beta1
+  - informers/core
+  - informers/core/v1
+  - informers/extensions
+  - informers/extensions/v1beta1
+  - informers/internalinterfaces
+  - informers/networking
+  - informers/networking/v1
+  - informers/policy
+  - informers/policy/v1beta1
+  - informers/rbac
+  - informers/rbac/v1
+  - informers/rbac/v1alpha1
+  - informers/rbac/v1beta1
+  - informers/scheduling
+  - informers/scheduling/v1alpha1
+  - informers/settings
+  - informers/settings/v1alpha1
+  - informers/storage
+  - informers/storage/v1
+  - informers/storage/v1beta1
   - kubernetes
+  - kubernetes/fake
   - kubernetes/scheme
   - kubernetes/typed/admissionregistration/v1alpha1
+  - kubernetes/typed/admissionregistration/v1alpha1/fake
   - kubernetes/typed/apps/v1beta1
+  - kubernetes/typed/apps/v1beta1/fake
   - kubernetes/typed/apps/v1beta2
+  - kubernetes/typed/apps/v1beta2/fake
   - kubernetes/typed/authentication/v1
+  - kubernetes/typed/authentication/v1/fake
   - kubernetes/typed/authentication/v1beta1
+  - kubernetes/typed/authentication/v1beta1/fake
   - kubernetes/typed/authorization/v1
+  - kubernetes/typed/authorization/v1/fake
   - kubernetes/typed/authorization/v1beta1
+  - kubernetes/typed/authorization/v1beta1/fake
   - kubernetes/typed/autoscaling/v1
+  - kubernetes/typed/autoscaling/v1/fake
   - kubernetes/typed/autoscaling/v2beta1
+  - kubernetes/typed/autoscaling/v2beta1/fake
   - kubernetes/typed/batch/v1
+  - kubernetes/typed/batch/v1/fake
   - kubernetes/typed/batch/v1beta1
+  - kubernetes/typed/batch/v1beta1/fake
   - kubernetes/typed/batch/v2alpha1
+  - kubernetes/typed/batch/v2alpha1/fake
   - kubernetes/typed/certificates/v1beta1
+  - kubernetes/typed/certificates/v1beta1/fake
   - kubernetes/typed/core/v1
+  - kubernetes/typed/core/v1/fake
   - kubernetes/typed/extensions/v1beta1
+  - kubernetes/typed/extensions/v1beta1/fake
   - kubernetes/typed/networking/v1
+  - kubernetes/typed/networking/v1/fake
   - kubernetes/typed/policy/v1beta1
+  - kubernetes/typed/policy/v1beta1/fake
   - kubernetes/typed/rbac/v1
+  - kubernetes/typed/rbac/v1/fake
   - kubernetes/typed/rbac/v1alpha1
+  - kubernetes/typed/rbac/v1alpha1/fake
   - kubernetes/typed/rbac/v1beta1
+  - kubernetes/typed/rbac/v1beta1/fake
   - kubernetes/typed/scheduling/v1alpha1
+  - kubernetes/typed/scheduling/v1alpha1/fake
   - kubernetes/typed/settings/v1alpha1
+  - kubernetes/typed/settings/v1alpha1/fake
   - kubernetes/typed/storage/v1
+  - kubernetes/typed/storage/v1/fake
   - kubernetes/typed/storage/v1beta1
+  - kubernetes/typed/storage/v1beta1/fake
+  - listers/admissionregistration/v1alpha1
+  - listers/apps/v1beta1
+  - listers/apps/v1beta2
+  - listers/autoscaling/v1
+  - listers/autoscaling/v2beta1
   - listers/batch/v1
+  - listers/batch/v1beta1
+  - listers/batch/v2alpha1
+  - listers/certificates/v1beta1
+  - listers/core/v1
+  - listers/extensions/v1beta1
+  - listers/networking/v1
+  - listers/policy/v1beta1
+  - listers/rbac/v1
+  - listers/rbac/v1alpha1
+  - listers/rbac/v1beta1
+  - listers/scheduling/v1alpha1
+  - listers/settings/v1alpha1
+  - listers/storage/v1
+  - listers/storage/v1beta1
   - pkg/version
   - rest
   - rest/watch
+  - testing
   - tools/auth
   - tools/cache
   - tools/clientcmd

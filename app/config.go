@@ -23,6 +23,7 @@ import (
 // Config contains configuration for workflow controller application
 type Config struct {
 	KubeConfigFile string
+	ListenHTTPAddr string
 }
 
 // NewWorkflowControllerConfig builds and returns a workflow controller Config
@@ -33,4 +34,5 @@ func NewWorkflowControllerConfig() *Config {
 // AddFlags add cobra flags to populate Config
 func (c *Config) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.KubeConfigFile, "kubeconfig", c.KubeConfigFile, "Location of kubecfg file for access to kubernetes master service")
+	fs.StringVar(&c.ListenHTTPAddr, "addr", "0.0.0.0:8086", "listen address of the http server which serves kubernetes probes and prometheus endpoints")
 }
