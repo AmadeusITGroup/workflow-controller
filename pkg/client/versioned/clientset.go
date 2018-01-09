@@ -2,8 +2,8 @@
 package versioned
 
 import (
-	glog "github.com/golang/glog"
 	workflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned/typed/workflow/v1"
+	glog "github.com/golang/glog"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
