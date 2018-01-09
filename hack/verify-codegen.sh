@@ -12,7 +12,7 @@ _tmp="${SCRIPT_ROOT}/_tmp"
 cleanup() {
     rm -rf "${_tmp}"
 }
-trap "cleanup" EXIT SIGINT
+trap "cleanup" EXIT SIGINT ERR
 
 cleanup
 
