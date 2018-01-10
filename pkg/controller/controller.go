@@ -30,9 +30,9 @@ import (
 
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 
+	wclientset "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
 	wlisters "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/workflow/v1"
-	wclientset "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
 )
 
 // WorkflowControllerConfig contains info to customize Workflow controller behaviour

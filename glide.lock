@@ -1,5 +1,5 @@
-hash: d5cdcd5da98ae28aa1ea0903b570b61868b138f289af20fd390a991becb1a8ef
-updated: 2018-01-05T16:56:01.451600009+01:00
+hash: a1befa0beb032474b852b142b4221a70122152ce7d57dfe93abc96fb29ddb6ff
+updated: 2018-01-10T14:51:22.173100222+01:00
 imports:
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
@@ -223,7 +223,7 @@ imports:
   - storage/v1
   - storage/v1beta1
 - name: k8s.io/apiextensions-apiserver
-  version: e15e93d7733a51122160e13ddb510a23f72bbe09
+  version: a5bbfd114a9b122acd741c61d88c84812375d9e1
   subpackages:
   - pkg/apis/apiextensions
   - pkg/apis/apiextensions/v1beta1
@@ -412,6 +412,10 @@ imports:
   - util/homedir
   - util/integer
   - util/workqueue
+- name: k8s.io/code-generator
+  version: 91d3f6a57905178524105a085085901bb73bd3dc
+- name: k8s.io/gengo
+  version: 1ef560bbde5195c01629039ad3b337ce63e7b321
 - name: k8s.io/kube-openapi
   version: 868f2f29720b192240e18284659231b440f9cda5
   subpackages:

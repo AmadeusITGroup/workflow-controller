@@ -11,12 +11,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
-	clientset "k8s.io/client-go/kubernetes"
+	kclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
+	wclientset "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
 	wlisters "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/workflow/v1"
-	wclientset "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
 
 	"github.com/amadeusitgroup/workflow-controller/pkg/controller"
 )
@@ -29,14 +29,14 @@ const (
 // GarbageCollector represents a Workflow Garbage Collector.
 // It collects orphaned Jobs
 type GarbageCollector struct {
-	KubeClient     clientset.Interface
+	KubeClient     kclientset.Interface
 	WorkflowClient wclientset.Interface
 	WorkflowLister wlisters.WorkflowLister
 	WorkflowSynced cache.InformerSynced
 }
 
 // NewGarbageCollector builds initializes and returns a GarbageCollector
-func NewGarbageCollector(workflowClient wclientset.Interface, kubeClient clientset.Interface, workflowInformerFactory winformers.SharedInformerFactory) *GarbageCollector {
+func NewGarbageCollector(workflowClient wclientset.Interface, kubeClient kclientset.Interface, workflowInformerFactory winformers.SharedInformerFactory) *GarbageCollector {
 	return &GarbageCollector{
 		KubeClient:     kubeClient,
 		WorkflowClient: workflowClient,

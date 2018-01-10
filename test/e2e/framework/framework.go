@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/amadeusitgroup/workflow-controller/pkg/client"
-	"github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
+	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 )
 
 // Framework stores necessary info to run e2e
