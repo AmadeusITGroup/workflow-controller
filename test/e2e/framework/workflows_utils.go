@@ -13,7 +13,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
-	"github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
+	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	"github.com/amadeusitgroup/workflow-controller/pkg/controller"
 )
 

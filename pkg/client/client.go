@@ -18,7 +18,7 @@ import (
 	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
 	v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 
-	"github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
+	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 )
 
 // DefineWorklowResource defines a WorkflowResource as a k8s CR

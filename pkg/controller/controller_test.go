@@ -17,8 +17,8 @@ import (
 
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 	wclient "github.com/amadeusitgroup/workflow-controller/pkg/client"
+	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
-	"github.com/amadeusitgroup/workflow-controller/pkg/client/versioned"
 )
 
 // utility function to create a basic Workflow with steps

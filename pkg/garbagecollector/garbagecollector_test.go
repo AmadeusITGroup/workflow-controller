@@ -15,8 +15,8 @@ import (
 
 	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
 	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	wfake "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/fake"
 	wlister "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/workflow/v1"
-	wfake "github.com/amadeusitgroup/workflow-controller/pkg/client/versioned/fake"
 	"github.com/amadeusitgroup/workflow-controller/pkg/controller"
 )
 
