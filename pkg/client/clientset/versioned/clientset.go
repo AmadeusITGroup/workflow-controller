@@ -19,6 +19,7 @@
 package versioned
 
 import (
+	cronworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/cronworkflow/v1"
 	workflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/workflow/v1"
 	glog "github.com/golang/glog"
 	discovery "k8s.io/client-go/discovery"
@@ -28,6 +29,9 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
+	CronworkflowV1() cronworkflowv1.CronworkflowV1Interface
+	// Deprecated: please explicitly pick a version if possible.
+	Cronworkflow() cronworkflowv1.CronworkflowV1Interface
 	WorkflowV1() workflowv1.WorkflowV1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Workflow() workflowv1.WorkflowV1Interface
@@ -37,7 +41,19 @@ type Interface interface {
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	workflowV1 *workflowv1.WorkflowV1Client
+	cronworkflowV1 *cronworkflowv1.CronworkflowV1Client
+	workflowV1     *workflowv1.WorkflowV1Client
+}
+
+// CronworkflowV1 retrieves the CronworkflowV1Client
+func (c *Clientset) CronworkflowV1() cronworkflowv1.CronworkflowV1Interface {
+	return c.cronworkflowV1
+}
+
+// Deprecated: Cronworkflow retrieves the default version of CronworkflowClient.
+// Please explicitly pick a version.
+func (c *Clientset) Cronworkflow() cronworkflowv1.CronworkflowV1Interface {
+	return c.cronworkflowV1
 }
 
 // WorkflowV1 retrieves the WorkflowV1Client
@@ -67,6 +83,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
+	cs.cronworkflowV1, err = cronworkflowv1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 	cs.workflowV1, err = workflowv1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -84,6 +104,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
+	cs.cronworkflowV1 = cronworkflowv1.NewForConfigOrDie(c)
 	cs.workflowV1 = workflowv1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
@@ -93,6 +114,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
+	cs.cronworkflowV1 = cronworkflowv1.New(c)
 	cs.workflowV1 = workflowv1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)

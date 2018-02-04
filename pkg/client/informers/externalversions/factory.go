@@ -27,6 +27,7 @@ import (
 	time "time"
 
 	versioned "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
+	cronworkflow "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/cronworkflow"
 	internalinterfaces "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
 	workflow "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/workflow"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -126,7 +127,12 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
+	Cronworkflow() cronworkflow.Interface
 	Workflow() workflow.Interface
+}
+
+func (f *sharedInformerFactory) Cronworkflow() cronworkflow.Interface {
+	return cronworkflow.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Workflow() workflow.Interface {

@@ -5,7 +5,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
+	"github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow"
 )
 
 var (
@@ -15,17 +15,17 @@ var (
 
 const (
 	// ResourcePlural is the id to indentify pluarals
-	ResourcePlural = "workflows"
+	ResourcePlural = "cronworkflows"
 	// ResourceSingular represents the id for identify singular resource
-	ResourceSingular = "workflow"
+	ResourceSingular = "cronworkflow"
 	// ResourceKind
-	ResourceKind = "Workflow"
-	// ReourceVersion
+	ResourceKind = "CronWorkflow"
+	// RedourceVersion
 	ResourceVersion = "v1"
 )
 
 // SchemeGroupVersion is the group version used to register these objects.
-var SchemeGroupVersion = schema.GroupVersion{Group: workflow.GroupName, Version: ResourceVersion}
+var SchemeGroupVersion = schema.GroupVersion{Group: cronworkflow.GroupName, Version: ResourceVersion}
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
 func Resource(resource string) schema.GroupResource {
@@ -40,8 +40,8 @@ func Kind(kind string) schema.GroupKind {
 // addKnownTypes adds the set of types defined in this package to the supplied scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&Workflow{},
-		&WorkflowList{},
+		&CronWorkflow{},
+		&CronWorkflowList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
