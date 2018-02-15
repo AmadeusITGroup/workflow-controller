@@ -113,12 +113,11 @@ func inferrWorkflowLabelSelectorForJobs(workflow *wapi.Workflow) labels.Selector
 
 func buildOwnerReference(obj *metav1.ObjectMeta) metav1.OwnerReference {
 	controllerRef := metav1.OwnerReference{
-		APIVersion:         wapi.SchemeGroupVersion.String(),
-		Kind:               wapi.ResourceKind,
-		Name:               obj.Name,
-		UID:                obj.UID,
-		BlockOwnerDeletion: boolPtr(true),
-		Controller:         boolPtr(true),
+		APIVersion: wapi.SchemeGroupVersion.String(),
+		Kind:       wapi.ResourceKind,
+		Name:       obj.Name,
+		UID:        obj.UID,
+		Controller: boolPtr(true),
 	}
 
 	return controllerRef
