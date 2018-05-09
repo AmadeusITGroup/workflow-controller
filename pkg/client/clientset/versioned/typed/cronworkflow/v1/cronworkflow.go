@@ -37,6 +37,7 @@ type CronWorkflowsGetter interface {
 type CronWorkflowInterface interface {
 	Create(*v1.CronWorkflow) (*v1.CronWorkflow, error)
 	Update(*v1.CronWorkflow) (*v1.CronWorkflow, error)
+	UpdateStatus(*v1.CronWorkflow) (*v1.CronWorkflow, error)
 	Delete(name string, options *meta_v1.DeleteOptions) error
 	DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error
 	Get(name string, options meta_v1.GetOptions) (*v1.CronWorkflow, error)
@@ -114,6 +115,22 @@ func (c *cronWorkflows) Update(cronWorkflow *v1.CronWorkflow) (result *v1.CronWo
 		Namespace(c.ns).
 		Resource("cronworkflows").
 		Name(cronWorkflow.Name).
+		Body(cronWorkflow).
+		Do().
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+
+func (c *cronWorkflows) UpdateStatus(cronWorkflow *v1.CronWorkflow) (result *v1.CronWorkflow, err error) {
+	result = &v1.CronWorkflow{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("cronworkflows").
+		Name(cronWorkflow.Name).
+		SubResource("status").
 		Body(cronWorkflow).
 		Do().
 		Into(result)

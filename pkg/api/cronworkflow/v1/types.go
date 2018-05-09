@@ -25,7 +25,6 @@ import (
 )
 
 // +genclient
-// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // CronWorkflow represents a Cron Workflow
@@ -57,7 +56,6 @@ type CronWorkflowList struct {
 
 // CronWorkflowSpec contains a cron Workflow specification
 type CronWorkflowSpec struct {
-
 	// The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule string `json:"schedule"`
 
@@ -102,7 +100,7 @@ type CronWorkflowStatus struct {
 type WorkflowTemplateSpec struct {
 	// Standard object's metadata of the workflows created from this template.
 	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
-	// +optional
+	// +optionalfr
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	// Specification of the desired behavior of the workflow.

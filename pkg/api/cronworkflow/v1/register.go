@@ -1,11 +1,10 @@
 package v1
 
 import (
+	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow"
 )
 
 var (
@@ -25,7 +24,7 @@ const (
 )
 
 // SchemeGroupVersion is the group version used to register these objects.
-var SchemeGroupVersion = schema.GroupVersion{Group: cronworkflow.GroupName, Version: ResourceVersion}
+var SchemeGroupVersion = schema.GroupVersion{Group: workflow.GroupName, Version: ResourceVersion}
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
 func Resource(resource string) schema.GroupResource {

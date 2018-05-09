@@ -15,7 +15,9 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+
 	wclient "github.com/amadeusitgroup/workflow-controller/pkg/client"
 	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
@@ -25,7 +27,7 @@ import (
 func newWorkflow(count int32, startTime *metav1.Time) *wapi.Workflow {
 	workflow := wapi.Workflow{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "example.com/v1",
+			APIVersion: workflow.GroupName + "/v1",
 			Kind:       "Workflow",
 		},
 		ObjectMeta: metav1.ObjectMeta{

@@ -15,5 +15,5 @@ package workflow
 
 const (
 	// GroupName is the API group for the workflow
-	GroupName = "dag.example.com" //"workflows.amadeus.net"
+	GroupName = "workflow.k8s.io"
 )
