@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"time"
+
 	"github.com/golang/glog"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -11,23 +13,22 @@ import (
 	"github.com/amadeusitgroup/workflow-controller/test/e2e/framework"
 )
 
-var _ = Describe("CronWorkflow CRUD", func() {
-	It("check CronWorkflow registration", func() {
+var _ = Describe("Cron Workflow CRUD", func() {
+	It("should register CronWorkflow CRD", func() {
 		var (
 			f                      *framework.Framework
 			err                    error
 			apiextensionsclientset *apiextensionsclient.Clientset
 		)
-
 		Eventually(func() error {
 			f, err = framework.NewFramework()
 			if err != nil {
-				framework.Logf("Cannot list workflows:%v", err)
+				framework.Logf("Cannot initialize test framework: %v", err)
 				return err
 			}
 			apiextensionsclientset, err = apiextensionsclient.NewForConfig(f.KubeConfig)
 			if err != nil {
-				glog.Fatalf("Unable to init clientset from kubeconfig:%v", err)
+				glog.Fatalf("Unable to init clientset from kubeconfig: %v", err)
 				return err
 			}
 			return nil
@@ -36,4 +37,17 @@ var _ = Describe("CronWorkflow CRUD", func() {
 		ns := api.NamespaceDefault
 		Eventually(framework.HOCheckCronWorkflowRegistration(*apiextensionsclientset, ns), "10s", "2s").ShouldNot(HaveOccurred())
 	})
+
+	It("shoud create a CronWorkflow", func() {
+		time.Sleep(5 * time.Second)
+	})
+
+	It("shoud default a CronWorkflow", func() {
+		time.Sleep(5 * time.Second)
+	})
+
+	It("shoud validate a CronWorkflow", func() {
+		time.Sleep(5 * time.Second)
+	})
+
 })

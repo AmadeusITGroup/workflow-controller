@@ -45,7 +45,7 @@ func deleteAllJobs(kubeClient clientset.Interface, workflow *wapi.Workflow) {
 
 var _ = Describe("Workflow CRUD", func() {
 	It("should create a workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		workflowClient, _, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "workflow1", ns, nil)
 		defer func() {
@@ -59,7 +59,7 @@ var _ = Describe("Workflow CRUD", func() {
 	})
 
 	It("should default workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		workflowClient, _, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "workflow2", ns, nil)
 		defer func() {
@@ -86,7 +86,7 @@ var _ = Describe("Workflow CRUD", func() {
 	})
 
 	It("should run to finish a workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		workflowClient, _, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "workflow3", ns, nil)
 		defer func() {
@@ -101,7 +101,7 @@ var _ = Describe("Workflow CRUD", func() {
 	})
 
 	It("should be able to update workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		workflowClient, _, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflowWithThreeSteps(workflow.GroupName, "v1", "workflow3", ns)
 		defer func() {
@@ -140,7 +140,7 @@ var _ = Describe("Workflow CRUD", func() {
 	})
 
 	It("should exceed deadline", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		workflowClient, _, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "deadlineworkflow", ns, nil)
 		threeSecs := int64(3)
@@ -172,7 +172,7 @@ var _ = Describe("Workflow CRUD", func() {
 	})
 
 	It("should remove an invalid workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		workflowClient, _, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflowWithLoop(workflow.GroupName, "v1", "loopworkflow", ns)
 
@@ -187,7 +187,7 @@ var _ = Describe("Workflow CRUD", func() {
 	})
 
 	It("should remove workflow created non empty status", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		workflowClient, _, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "nonemptystatus", ns, nil)
 		now := metav1.Now()
@@ -207,7 +207,7 @@ var _ = Describe("Workflow CRUD", func() {
 
 var _ = Describe("Workflow Garbage Collection", func() {
 	It("should delete all jobs for deleted Workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		workflowClient, _, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 
 		myWorkflow := framework.NewWorkflowWithThreeSteps(workflow.GroupName, "v1", "workflow-long", ns)

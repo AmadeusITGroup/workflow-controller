@@ -108,7 +108,8 @@ func NewWorkflowControllerApp(c *Config) *WorkflowController {
 		glog.Fatalf("Unable to initialize CronWorkflow client: %v", err)
 	}
 	cronWorkflowInformerFactory := winformers.NewSharedInformerFactory(cronWorkflowClient, time.Second*30)
-	cronWorkflowCtrl := controller.NewCronWorkflowController(cronWorkflowClient, kubeClient)
+	cronWorkflowCtrl := controller.NewCronWorkflowController(cronWorkflowClient, kubeClient, workflowInformerFactory, cronWorkflowInformerFactory)
+
 	health := configureHealth(workflowCtrl) // configure readiness and liveness probes
 
 	return &WorkflowController{
@@ -129,13 +130,17 @@ func (c *WorkflowController) Run() {
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		go handleSignal(cancelFunc)
 		c.kubeInformerFactory.Start(ctx.Done())
+
 		c.workflowInformerFactory.Start(ctx.Done())
-		c.runGC(ctx)
-		go c.runHTTPServer(ctx)
+		go c.workflowController.Run(ctx)
+
 		c.cronWorkflowInfomerFactory.Start(ctx.Done())
-		c.workflowInformerFactory.Start(ctx.Done())
-		c.workflowController.Run(ctx)
-		// c.cronWorkflowController.Run(ctx): TODO: activates this
+		go c.cronWorkflowController.Run(ctx)
+
+		go c.runHTTPServer(ctx)
+		c.runGC(ctx)
+
+		<-ctx.Done()
 	}
 }
 

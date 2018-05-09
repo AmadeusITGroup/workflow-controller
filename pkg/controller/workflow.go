@@ -123,7 +123,7 @@ func NewWorkflowController(
 
 // Run simply runs the controller. Assuming Informers are already running: via factories
 func (w *WorkflowController) Run(ctx context.Context) error {
-	glog.Infof("Starting workflow controller")
+	glog.V(2).Infof("Starting workflow controller")
 
 	if !cache.WaitForCacheSync(ctx.Done(), w.JobSynced, w.WorkflowSynced) {
 		return fmt.Errorf("Timed out waiting for caches to sync")

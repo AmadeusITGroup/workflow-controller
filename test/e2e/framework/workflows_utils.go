@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	. "github.com/onsi/gomega"
 
 	batch "k8s.io/api/batch/v1"
 	batchv2 "k8s.io/api/batch/v2alpha1"
@@ -25,22 +24,6 @@ func IsWorkflowFailedDueDeadline(w *wapi.Workflow) bool {
 		}
 	}
 	return false
-}
-
-// BuildAndSetClients builds and initilize workflow and kube client
-func BuildAndSetClients() (versioned.Interface, *clientset.Clientset) {
-	f, err := NewFramework()
-	Ω(err).ShouldNot(HaveOccurred())
-	Ω(f).ShouldNot(BeNil())
-
-	kubeClient, err := f.kubeClient()
-	Ω(err).ShouldNot(HaveOccurred())
-	Ω(kubeClient).ShouldNot(BeNil())
-	Logf("Check wether Workflow resource is registered...")
-	workflowClient, err := f.workflowClient()
-	Ω(err).ShouldNot(HaveOccurred())
-	Ω(workflowClient).ShouldNot(BeNil())
-	return workflowClient, kubeClient
 }
 
 func NewWorkflowStep(name string, dependencies []string) *wapi.WorkflowStep {

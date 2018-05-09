@@ -46,3 +46,11 @@ func (f *Framework) workflowClient() (versioned.Interface, error) {
 	}
 	return c, err
 }
+
+func (f *Framework) cronWorkflowClient() (versioned.Interface, error) {
+	c, err := client.NewCronWorkflowClient(f.KubeConfig)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create cron workflow client:%v", err)
+	}
+	return c, err
+}
