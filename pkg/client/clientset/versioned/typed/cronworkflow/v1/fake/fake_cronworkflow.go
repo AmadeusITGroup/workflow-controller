@@ -100,6 +100,18 @@ func (c *FakeCronWorkflows) Update(cronWorkflow *cronworkflow_v1.CronWorkflow) (
 	return obj.(*cronworkflow_v1.CronWorkflow), err
 }
 
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeCronWorkflows) UpdateStatus(cronWorkflow *cronworkflow_v1.CronWorkflow) (*cronworkflow_v1.CronWorkflow, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewUpdateSubresourceAction(cronworkflowsResource, "status", c.ns, cronWorkflow), &cronworkflow_v1.CronWorkflow{})
+
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*cronworkflow_v1.CronWorkflow), err
+}
+
 // Delete takes name of the cronWorkflow and deletes it. Returns an error if one occurs.
 func (c *FakeCronWorkflows) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
