@@ -1,25 +1,39 @@
 package e2e
 
 import (
-	"fmt"
-
-	api "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
+	"github.com/golang/glog"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
-	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	api "k8s.io/api/core/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 
 	"github.com/amadeusitgroup/workflow-controller/test/e2e/framework"
 )
 
-var _ = Describe("Workflow CRUD", func() {
+var _ = Describe("CronWorkflow CRUD", func() {
 	It("check CronWorkflow registration", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
-		ns := api.NamespaceDefault
+		var (
+			f                      *framework.Framework
+			err                    error
+			apiextensionsclientset *apiextensionsclient.Clientset
+		)
 
-		Eventually(framework.HOCheckCronWorkflowRegistration(workflowClient, ns), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(func() error {
+			f, err = framework.NewFramework()
+			if err != nil {
+				framework.Logf("Cannot list workflows:%v", err)
+				return err
+			}
+			apiextensionsclientset, err = apiextensionsclient.NewForConfig(f.KubeConfig)
+			if err != nil {
+				glog.Fatalf("Unable to init clientset from kubeconfig:%v", err)
+				return err
+			}
+			return nil
+		}, "40s", "1s").ShouldNot(HaveOccurred())
+
+		ns := api.NamespaceDefault
+		Eventually(framework.HOCheckCronWorkflowRegistration(*apiextensionsclientset, ns), "10s", "2s").ShouldNot(HaveOccurred())
 	})
-}
+})
