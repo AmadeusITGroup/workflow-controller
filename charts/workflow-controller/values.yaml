@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 serviceAccount: workflow-controller
 logLevel: 2
-apiGroupName: dag.example.com
+apiGroupName: workflow.k8s.io
 image:
   registry: ""
   pullPolicy: Always
