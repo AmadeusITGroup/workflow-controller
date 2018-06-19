@@ -87,11 +87,9 @@ func NewWorkflowControllerApp(c *Config) *WorkflowController {
 			glog.Fatalf("Unable to define Workflow resource:%v", err)
 		}
 
-		if c.EnableCronWorkflow {
-			_, err = wclient.DefineCronWorklowResource(apiextensionsclientset)
-			if err != nil && !apierrors.IsAlreadyExists(err) { // TODO:
-				glog.Fatalf("Unable to define CronWorkflow resource:%v", err)
-			}
+		_, err = wclient.DefineCronWorklowResource(apiextensionsclientset)
+		if err != nil && !apierrors.IsAlreadyExists(err) { // TODO:
+			glog.Fatalf("Unable to define CronWorkflow resource:%v", err)
 		}
 	}
 
@@ -105,18 +103,12 @@ func NewWorkflowControllerApp(c *Config) *WorkflowController {
 	workflowInformerFactory := winformers.NewSharedInformerFactory(workflowClient, time.Second*30)
 	workflowCtrl := controller.NewWorkflowController(workflowClient, kubeClient, kubeInformerFactory, workflowInformerFactory)
 
-	var (
-		cronWorkflowInformerFactory winformers.SharedInformerFactory
-		cronWorkflowCtrl            *controller.CronWorkflowController
-	)
-	if c.EnableCronWorkflow {
-		cronWorkflowClient, err := wclient.NewCronWorkflowClient(kubeConfig)
-		if err != nil {
-			glog.Fatalf("Unable to initialize CronWorkflow client: %v", err)
-		}
-		cronWorkflowInformerFactory = winformers.NewSharedInformerFactory(cronWorkflowClient, time.Second*30)
-		cronWorkflowCtrl = controller.NewCronWorkflowController(cronWorkflowClient, kubeClient)
+	cronWorkflowClient, err := wclient.NewCronWorkflowClient(kubeConfig)
+	if err != nil {
+		glog.Fatalf("Unable to initialize CronWorkflow client: %v", err)
 	}
+	cronWorkflowInformerFactory := winformers.NewSharedInformerFactory(cronWorkflowClient, time.Second*30)
+	cronWorkflowCtrl := controller.NewCronWorkflowController(cronWorkflowClient, kubeClient)
 	health := configureHealth(workflowCtrl) // configure readiness and liveness probes
 
 	return &WorkflowController{
@@ -140,7 +132,10 @@ func (c *WorkflowController) Run() {
 		c.workflowInformerFactory.Start(ctx.Done())
 		c.runGC(ctx)
 		go c.runHTTPServer(ctx)
+		c.cronWorkflowInfomerFactory.Start(ctx.Done())
+		c.workflowInformerFactory.Start(ctx.Done())
 		c.workflowController.Run(ctx)
+		// c.cronWorkflowController.Run(ctx): TODO: activates this
 	}
 }
 

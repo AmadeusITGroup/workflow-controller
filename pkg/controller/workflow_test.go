@@ -17,7 +17,6 @@ import (
 
 	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
-
 	wclient "github.com/amadeusitgroup/workflow-controller/pkg/client"
 	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
@@ -242,7 +241,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 		fmt.Printf("Running '%s' test case ...\n", name)
 		// workflow controller setup
 		restConfig := &rest.Config{Host: "localhost"}
-		workflowClient, err := wclient.NewClient(restConfig)
+		workflowClient, err := wclient.NewWorkflowClient(restConfig)
 		if err != nil {
 			t.Fatalf("%s:%v", name, err)
 		}
@@ -344,7 +343,7 @@ func TestControllerRun(t *testing.T) {
 	}
 	for name, tc := range testCases {
 		restConfig := &rest.Config{Host: "localhost"}
-		workflowClient, err := wclient.NewClient(restConfig)
+		workflowClient, err := wclient.NewWorkflowClient(restConfig)
 		if err != nil {
 			t.Fatalf("%s:%v", name, err)
 		}

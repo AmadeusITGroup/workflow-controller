@@ -22,10 +22,9 @@ import (
 
 // Config contains configuration for workflow controller application
 type Config struct {
-	KubeConfigFile     string
-	ListenHTTPAddr     string
-	EnableCronWorkflow bool
-	InstallCRDs        bool
+	KubeConfigFile string
+	ListenHTTPAddr string
+	InstallCRDs    bool
 }
 
 // NewWorkflowControllerConfig builds and returns a workflow controller Config
@@ -37,6 +36,5 @@ func NewWorkflowControllerConfig() *Config {
 func (c *Config) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.KubeConfigFile, "kubeconfig", c.KubeConfigFile, "Location of kubecfg file for access to kubernetes master service")
 	fs.StringVar(&c.ListenHTTPAddr, "addr", "0.0.0.0:8086", "Listen address of the http server which serves kubernetes probes and prometheus endpoints")
-	fs.BoolVar(&c.EnableCronWorkflow, "enable-cron-workflow", false, "Enable CronWorkflow controller")
 	fs.BoolVar(&c.InstallCRDs, "install-crds", true, "install the CRDs used by the controller as part of startup") // to be compatible with kubebuilder https://github.com/kubernetes-sigs/kubebuilder) built controllers
 }

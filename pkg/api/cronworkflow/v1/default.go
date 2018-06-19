@@ -4,7 +4,7 @@ import (
 	reflect "reflect"
 )
 
-// IsWorkflowDefaulted check wether
+// IsCronWorkflowDefaulted checks wether cronWorkflow is defaulted
 func IsCronWorkflowDefaulted(w *CronWorkflow) bool {
 	defaultedWorkflow := DefaultCronWorkflow(w)
 	return reflect.DeepEqual(w.Spec, defaultedWorkflow.Spec)

@@ -100,7 +100,7 @@ type CronWorkflowStatus struct {
 type WorkflowTemplateSpec struct {
 	// Standard object's metadata of the workflows created from this template.
 	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
-	// +optionalfr
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	// Specification of the desired behavior of the workflow.
