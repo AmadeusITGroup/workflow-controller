@@ -3,6 +3,8 @@ package controller
 import (
 	"fmt"
 
+	"github.com/golang/glog"
+
 	batch "k8s.io/api/batch/v1"
 	batchv2 "k8s.io/api/batch/v2alpha1"
 	api "k8s.io/api/core/v1"
@@ -15,7 +17,6 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
-	"github.com/golang/glog"
 )
 
 // JobControlInterface defines interface to control Jobs life-cycle.

@@ -37,19 +37,6 @@ func BuildAndSetClients() (versioned.Interface, *clientset.Clientset) {
 	Ω(err).ShouldNot(HaveOccurred())
 	Ω(kubeClient).ShouldNot(BeNil())
 	Logf("Check wether Workflow resource is registered...")
-	/*
-		TODO: check whether CRD is registered
-		Eventually(func() bool {
-			r, err := client.IsWorkflowRegistered(kubeClient, f.ResourceName, f.ResourceGroup, f.ResourceVersion)
-			if err != nil {
-				Logf("Error: %v", err)
-			}
-			return (r && err == nil)
-		}, "5s", "1s").Should(BeTrue())
-		Logf("It is!")
-		resourceName := strings.Join([]string{f.ResourceName, f.ResourceGroup}, ".")
-		thirdPartyResource, err := kubeClient.Extensions().ThirdPartyResources().Get(resourceName)
-	*/
 	workflowClient, err := f.workflowClient()
 	Ω(err).ShouldNot(HaveOccurred())
 	Ω(workflowClient).ShouldNot(BeNil())

@@ -6,14 +6,14 @@ import (
 	"reflect"
 	"time"
 
-	"k8s.io/apimachinery/pkg/labels"
-
 	"github.com/golang/glog"
 
 	batch "k8s.io/api/batch/v1"
 	batchv2 "k8s.io/api/batch/v2alpha1"
 	apiv1 "k8s.io/api/core/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -29,7 +29,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
-
 	wclientset "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
 	wlisters "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/workflow/v1"
@@ -38,7 +37,7 @@ import (
 // WorkflowControllerConfig contains info to customize Workflow controller behaviour
 type WorkflowControllerConfig struct {
 	RemoveIvalidWorkflow bool
-	NumberOfThreads      int
+	NumberOfWorkers      int
 }
 
 // WorkflowStepLabelKey defines the key of label to be injected by workflow controller
@@ -95,7 +94,7 @@ func NewWorkflowController(
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "workflow"),
 		config: WorkflowControllerConfig{
 			RemoveIvalidWorkflow: true,
-			NumberOfThreads:      1,
+			NumberOfWorkers:      1,
 		},
 
 		Recorder: eventBroadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{Component: "workflow-controller"}),
@@ -130,7 +129,7 @@ func (w *WorkflowController) Run(ctx context.Context) error {
 		return fmt.Errorf("Timed out waiting for caches to sync")
 	}
 
-	for i := 0; i < w.config.NumberOfThreads; i++ {
+	for i := 0; i < w.config.NumberOfWorkers; i++ {
 		go wait.Until(w.runWorker, time.Second, ctx.Done())
 	}
 

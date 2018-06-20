@@ -9,12 +9,15 @@ import (
 	batch "k8s.io/api/batch/v1"
 	batchv2 "k8s.io/api/batch/v2alpha1"
 	api "k8s.io/api/core/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	kubeinformers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 	wclient "github.com/amadeusitgroup/workflow-controller/pkg/client"
 	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
@@ -25,7 +28,7 @@ import (
 func newWorkflow(count int32, startTime *metav1.Time) *wapi.Workflow {
 	workflow := wapi.Workflow{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "example.com/v1",
+			APIVersion: workflow.GroupName + "/v1",
 			Kind:       "Workflow",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -240,7 +243,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 		fmt.Printf("Running '%s' test case ...\n", name)
 		// workflow controller setup
 		restConfig := &rest.Config{Host: "localhost"}
-		workflowClient, err := wclient.NewClient(restConfig)
+		workflowClient, err := wclient.NewWorkflowClient(restConfig)
 		if err != nil {
 			t.Fatalf("%s:%v", name, err)
 		}
@@ -342,7 +345,7 @@ func TestControllerRun(t *testing.T) {
 	}
 	for name, tc := range testCases {
 		restConfig := &rest.Config{Host: "localhost"}
-		workflowClient, err := wclient.NewClient(restConfig)
+		workflowClient, err := wclient.NewWorkflowClient(restConfig)
 		if err != nil {
 			t.Fatalf("%s:%v", name, err)
 		}

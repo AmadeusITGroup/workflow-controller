@@ -56,7 +56,6 @@ type CronWorkflowList struct {
 
 // CronWorkflowSpec contains a cron Workflow specification
 type CronWorkflowSpec struct {
-
 	// The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule string `json:"schedule"`
 

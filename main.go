@@ -35,6 +35,6 @@ func main() {
 	pflag.Parse()
 	goflag.CommandLine.Parse([]string{})
 
-	a := app.NewWorkflowController(config)
+	a := app.NewWorkflowControllerApp(config)
 	a.Run()
 }

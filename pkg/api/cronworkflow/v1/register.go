@@ -5,12 +5,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow"
+	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
 )
 
 var (
+	//SchemeBuilder builds the sceme for workflow v1
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
-	AddToScheme   = SchemeBuilder.AddToScheme
+	// AddToScheme forwards the AddToScheme funcs for workflow v1
+	AddToScheme = SchemeBuilder.AddToScheme
 )
 
 const (
@@ -18,14 +20,14 @@ const (
 	ResourcePlural = "cronworkflows"
 	// ResourceSingular represents the id for identify singular resource
 	ResourceSingular = "cronworkflow"
-	// ResourceKind
+	// ResourceKind defines Kind for cronWorkflow
 	ResourceKind = "CronWorkflow"
-	// RedourceVersion
+	// ResourceVersion defines version for cronWorkflow
 	ResourceVersion = "v1"
 )
 
 // SchemeGroupVersion is the group version used to register these objects.
-var SchemeGroupVersion = schema.GroupVersion{Group: cronworkflow.GroupName, Version: ResourceVersion}
+var SchemeGroupVersion = schema.GroupVersion{Group: workflow.GroupName, Version: ResourceVersion}
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
 func Resource(resource string) schema.GroupResource {
