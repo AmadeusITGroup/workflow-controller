@@ -19,7 +19,6 @@ import (
 	cronworkflowV1 "github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow/v1"
 	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
 	workflowV1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
-
 	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 )
 

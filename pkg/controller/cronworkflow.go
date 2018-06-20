@@ -21,7 +21,6 @@ import (
 
 	cwapi "github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow/v1"
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
-
 	wclientset "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	cwlisters "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/cronworkflow/v1"
 	wlisters "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/workflow/v1"
@@ -30,7 +29,7 @@ import (
 // CronWorkflowControllerConfig contains info to customize Workflow controller behaviour
 type CronWorkflowControllerConfig struct {
 	RemoveIvalidCronWorkflow bool
-	NumberOfThreads          int
+	NumberOfWorkers          int
 }
 
 // CronWorkflowController represents the Workflow controller
@@ -68,7 +67,7 @@ func NewCronWorkflowController(
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "cronworkflow"),
 		config: CronWorkflowControllerConfig{
 			RemoveIvalidCronWorkflow: true,
-			NumberOfThreads:          1,
+			NumberOfWorkers:          1,
 		},
 
 		Recorder: eventBroadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{Component: "cronworkflow-controller"}),
@@ -88,7 +87,7 @@ func (w *CronWorkflowController) Run(ctx context.Context) error {
 		return fmt.Errorf("Timed out waiting for caches to sync")
 	}
 
-	for i := 0; i < w.config.NumberOfThreads; i++ {
+	for i := 0; i < w.config.NumberOfWorkers; i++ {
 		go wait.Until(w.runWorker, time.Second, ctx.Done())
 	}
 
@@ -192,18 +191,6 @@ func (w *CronWorkflowController) sync(key string) error {
 
 	return w.manageCronWorkflow(workflow)
 }
-
-/*
-func newCondition(conditionType wapi.WorkflowConditionType, reason, message string) wapi.WorkflowCondition {
-	return wapi.WorkflowCondition{
-		Type:               conditionType,
-		Status:             apiv1.ConditionTrue,
-		LastProbeTime:      metav1.Now(),
-		LastTransitionTime: metav1.Now(),
-		Reason:             reason,
-		Message:            message,
-	}
-}*/
 
 func (w *CronWorkflowController) onAddCronWorkflow(obj interface{}) {
 	workflow, ok := obj.(*cwapi.CronWorkflow)
