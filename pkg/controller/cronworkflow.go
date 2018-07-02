@@ -27,17 +27,17 @@ import (
 	wlisters "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/workflow/v1"
 )
 
-// CronWorkflowControllerConfig contains info to customize Workflow controller behaviour
+// CronWorkflowControllerConfig contains info to customize CronWorkflow controller behaviour
 type CronWorkflowControllerConfig struct {
 	RemoveIvalidCronWorkflow bool
 	NumberOfWorkers          int
 }
 
-// CronWorkflowController represents the Workflow controller
+// CronWorkflowController represents the CronWorkflow controller
 type CronWorkflowController struct {
 	CronWorkflowClient wclientset.Interface
 	KubeClient         clientset.Interface
-	queue              workqueue.RateLimitingInterface // Workflows to be synced
+	queue              workqueue.RateLimitingInterface // CronWorkflows to be synced
 
 	CronWorkflowLister cwlisters.CronWorkflowLister
 	CronWorkflowSynced cache.InformerSynced
@@ -45,7 +45,7 @@ type CronWorkflowController struct {
 	WorkflowLister wlisters.WorkflowLister
 	WorkflowSynced cache.InformerSynced // returns true if job has been synced. Added as member for testing
 
-	updateHandler func(*cwapi.CronWorkflow) error // callback to upate Workflow. Added as member for testing
+	updateHandler func(*cwapi.CronWorkflow) error // callback to upate CronWorkflow. Added as member for testing
 	syncHandler   func(string) error
 
 	Recorder record.EventRecorder
@@ -145,10 +145,10 @@ func (w *CronWorkflowController) processNextItem() bool {
 }
 
 // enqueue adds key in the controller queue
-func (w *CronWorkflowController) enqueue(workflow *cwapi.CronWorkflow) {
-	key, err := cache.MetaNamespaceKeyFunc(workflow)
+func (w *CronWorkflowController) enqueue(cronWorkflow *cwapi.CronWorkflow) {
+	key, err := cache.MetaNamespaceKeyFunc(cronWorkflow)
 	if err != nil {
-		glog.Errorf("CronWorkflowController:enqueue: couldn't get key for Workflow   %s/%s", workflow.Namespace, workflow.Name)
+		glog.Errorf("CronWorkflowController:enqueue: couldn't get key for CronWorkflow   %s/%s", cronWorkflow.Namespace, cronWorkflow.Name)
 		return
 	}
 	w.queue.Add(key)
@@ -163,7 +163,7 @@ func (w *CronWorkflowController) getCronWorkflowByKey(key string) (*cwapi.CronWo
 	glog.V(6).Infof("Syncing %s/%s", namespace, name)
 	workflow, err := w.CronWorkflowLister.CronWorkflows(namespace).Get(name)
 	if err != nil {
-		glog.Errorf("Unable to get Workflow %s/%s: %v. Maybe deleted", namespace, name, err)
+		glog.Errorf("Unable to get CronWorkflow %s/%s: %v. Maybe deleted", namespace, name, err)
 		return nil, err
 	}
 	return workflow, nil
@@ -179,7 +179,7 @@ func (w *CronWorkflowController) sync(key string) error {
 	var sharedCronWorkflow *cwapi.CronWorkflow
 	var err error
 	if sharedCronWorkflow, err = w.getCronWorkflowByKey(key); err != nil {
-		glog.Errorf("Unable to get Workflow %s: %v. Maybe deleted", key, err)
+		glog.Errorf("Unable to get CronWorkflow %s: %v. Maybe deleted", key, err)
 		return nil
 	}
 	namespace := sharedCronWorkflow.Namespace
@@ -188,8 +188,8 @@ func (w *CronWorkflowController) sync(key string) error {
 	if !cwapi.IsCronWorkflowDefaulted(sharedCronWorkflow) {
 		defaultedWorkflow := cwapi.DefaultCronWorkflow(sharedCronWorkflow)
 		if err := w.updateHandler(defaultedWorkflow); err != nil {
-			glog.Errorf("CronWorkflowController.sync unable to default Workflow %s/%s: %v", namespace, name, err)
-			return fmt.Errorf("unable to default Workflow %s/%s: %v", namespace, name, err)
+			glog.Errorf("CronWorkflowController.sync unable to default CronWorkflow %s/%s: %v", namespace, name, err)
+			return fmt.Errorf("unable to default CronWorkflow %s/%s: %v", namespace, name, err)
 		}
 		glog.V(6).Infof("CronWorkflowController.sync Defaulted %s/%s", namespace, name)
 		return nil
@@ -197,12 +197,12 @@ func (w *CronWorkflowController) sync(key string) error {
 
 	// Validation. We always revalidate CronWorkflow
 	if errs := cwapi.ValidateCronWorkflow(sharedCronWorkflow); errs != nil && len(errs) > 0 {
-		glog.Errorf("CronWorkflowController.sync Worfklow %s/%s not valid: %v", namespace, name, errs)
+		glog.Errorf("CronWorkflowController.sync CronWorfklow %s/%s not valid: %v", namespace, name, errs)
 		if w.config.RemoveIvalidCronWorkflow {
 			glog.Errorf("Invalid workflow %s/%s is going to be removed", namespace, name)
 			if err := w.deleteCronWorkflow(namespace, name); err != nil {
-				glog.Errorf("Unable to delete invalid workflow %s/%s: %v", namespace, name, err)
-				return fmt.Errorf("unable to delete invalid workflow %s/%s: %v", namespace, name, err)
+				glog.Errorf("Unable to delete invalid CronWorkflow %s/%s: %v", namespace, name, err)
+				return fmt.Errorf("unable to delete invalid CronWorkflow %s/%s: %v", namespace, name, err)
 			}
 		}
 		return nil
@@ -220,11 +220,11 @@ func (w *CronWorkflowController) sync(key string) error {
 func (w *CronWorkflowController) onAddCronWorkflow(obj interface{}) {
 	workflow, ok := obj.(*cwapi.CronWorkflow)
 	if !ok {
-		glog.Errorf("Adding workflow, expected workflow object. Got: %+v", obj)
+		glog.Errorf("Adding ConrWorkflow, expected CronWorkflow object. Got: %+v", obj)
 		return
 	}
-	if !reflect.DeepEqual(workflow.Status, wapi.WorkflowStatus{}) {
-		glog.Errorf("Workflow %s/%s created with non empty status. Going to be removed", workflow.Namespace, workflow.Name)
+	if !reflect.DeepEqual(workflow.Status, cwapi.CronWorkflowStatus{}) {
+		glog.Errorf("CronWorkflow %s/%s created with non empty status. Going to be removed", workflow.Namespace, workflow.Name)
 		if _, err := cache.MetaNamespaceKeyFunc(workflow); err != nil {
 			glog.Errorf("Couldn't get key for Workflow (to be deleted) %s/%s: %v", workflow.Namespace, workflow.Name, err)
 			return
