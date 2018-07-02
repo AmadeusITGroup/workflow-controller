@@ -51,6 +51,90 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 			wantedErrorMessage: `[spec.schedule: Invalid value: "bad schedule": Expected exactly 5 fields, found 2: bad schedule]`,
 		},
 		{
+			name: "non-standard supported: @yearly",
+			args: args{
+				spec: newCronWorkflowSpec(),
+			},
+			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+				s := spec.DeepCopy()
+				s.Schedule = "@yearly"
+				return s
+			},
+			wantedErrorMessage: "[]",
+		},
+		{
+			name: "non-standard supported: @annually",
+			args: args{
+				spec: newCronWorkflowSpec(),
+			},
+			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+				s := spec.DeepCopy()
+				s.Schedule = "@annually"
+				return s
+			},
+			wantedErrorMessage: "[]",
+		},
+		{
+			name: "non-standard supported: @monthly",
+			args: args{
+				spec: newCronWorkflowSpec(),
+			},
+			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+				s := spec.DeepCopy()
+				s.Schedule = "@monthly"
+				return s
+			},
+			wantedErrorMessage: "[]",
+		},
+		{
+			name: "non-standard supported: @weekly",
+			args: args{
+				spec: newCronWorkflowSpec(),
+			},
+			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+				s := spec.DeepCopy()
+				s.Schedule = "@weekly"
+				return s
+			},
+			wantedErrorMessage: "[]",
+		},
+		{
+			name: "non-standard supported: @daily",
+			args: args{
+				spec: newCronWorkflowSpec(),
+			},
+			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+				s := spec.DeepCopy()
+				s.Schedule = "@daily"
+				return s
+			},
+			wantedErrorMessage: "[]",
+		},
+		{
+			name: "non-standard NOT supported: @reboot",
+			args: args{
+				spec: newCronWorkflowSpec(),
+			},
+			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+				s := spec.DeepCopy()
+				s.Schedule = "@reboot"
+				return s
+			},
+			wantedErrorMessage: `[spec.schedule: Invalid value: "@reboot": Unrecognized descriptor: @reboot]`,
+		},
+		{
+			name: "non-standard supported: @hourly",
+			args: args{
+				spec: newCronWorkflowSpec(),
+			},
+			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+				s := spec.DeepCopy()
+				s.Schedule = "@hourly"
+				return s
+			},
+			wantedErrorMessage: "[]",
+		},
+		{
 			name: "negative startingDeadlineSeconds",
 			args: args{
 				spec: newCronWorkflowSpec(),
