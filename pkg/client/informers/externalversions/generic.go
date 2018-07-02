@@ -23,7 +23,6 @@ package externalversions
 
 import (
 	"fmt"
-
 	v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow/v1"
 	workflow_v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

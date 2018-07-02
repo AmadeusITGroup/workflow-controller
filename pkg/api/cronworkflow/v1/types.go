@@ -59,9 +59,6 @@ type CronWorkflowSpec struct {
 	// The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule string `json:"schedule"`
 
-	// The anti schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
-	AntiSchedule string `json:"antischedule,omitempty"`
-
 	// Optional deadline in seconds for starting the workflow if it misses scheduled
 	// time for any reason.  Missed workflows executions will be counted as failed ones.
 	StartingDeadlineSeconds *int64 `json:"startingDeadlineSeconds,omitempty"`

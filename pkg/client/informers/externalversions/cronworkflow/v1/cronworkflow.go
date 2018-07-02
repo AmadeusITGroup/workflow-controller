@@ -22,8 +22,6 @@
 package v1
 
 import (
-	time "time"
-
 	cronworkflow_v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow/v1"
 	versioned "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
@@ -32,6 +30,7 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
+	time "time"
 )
 
 // CronWorkflowInformer provides access to a shared informer and lister for

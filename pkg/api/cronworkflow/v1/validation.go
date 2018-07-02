@@ -43,9 +43,6 @@ func validateConcurrencyPolicy(concurrencyPolicy *batchv2alpha1.ConcurrencyPolic
 func ValidateCronWorkflowSpec(spec *CronWorkflowSpec, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateScheduleFormat(spec.Schedule, fieldPath.Child("schedule"))...)
-	if len(spec.AntiSchedule) > 0 {
-		allErrs = append(allErrs, validateScheduleFormat(spec.AntiSchedule, fieldPath.Child("antiSchedule"))...)
-	}
 	if spec.StartingDeadlineSeconds != nil {
 		allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(*spec.StartingDeadlineSeconds), fieldPath.Child("startingDeadlineSeconds"))...)
 	}

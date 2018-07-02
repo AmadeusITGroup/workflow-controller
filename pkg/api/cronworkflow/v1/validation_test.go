@@ -51,18 +51,6 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 			wantedErrorMessage: `[spec.schedule: Invalid value: "bad schedule": Expected exactly 5 fields, found 2: bad schedule]`,
 		},
 		{
-			name: "bad antiSchedule",
-			args: args{
-				spec: newCronWorkflowSpec(),
-			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
-				s := spec.DeepCopy()
-				s.AntiSchedule = "bad antiSchedule"
-				return s
-			},
-			wantedErrorMessage: `[spec.antiSchedule: Invalid value: "bad antiSchedule": Expected exactly 5 fields, found 2: bad antiSchedule]`,
-		},
-		{
 			name: "negative startingDeadlineSeconds",
 			args: args{
 				spec: newCronWorkflowSpec(),
