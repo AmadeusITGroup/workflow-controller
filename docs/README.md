@@ -7,6 +7,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/amadeusitgroup/workflow-controller)](https://goreportcard.com/report/github.com/amadeusitgroup/workflow-controller)
 [![codecov](https://codecov.io/gh/amadeusitgroup/workflow-controller/branch/master/graph/badge.svg)](https://codecov.io/gh/amadeusitgroup/workflow-controller)
 ![DopeBadge](https://img.shields.io/badge/Hightower-dope-C0C0C0.svg)
+![Cool.io](https://img.shields.io/badge/project-COOL-green.svg)
 
 A simple Kubernetes workflow controller. TODO: add more explanations.
 
