@@ -14,6 +14,9 @@
 
 ARTIFACT=workflow-controller
 
+PLUGIN_ARTIFACT=kubectl-plugin
+PLUGIN_PATH=./kubectl-plugin
+
 # 0.0 shouldn't clobber any released builds
 TAG= latest
 #PREFIX = gcr.io/google_containers/${ARTIFACT}
@@ -24,10 +27,18 @@ SOURCES := $(shell find $(SOURCEDIR) ! -name "*_test.go" -name '*.go')
 all: build
 
 
-build: ${ARTIFACT}
+build: ${ARTIFACT} ${PLUGIN_ARTIFACT}
 
 ${ARTIFACT}: ${SOURCES}
-	CGO_ENABLED=0 GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o ${ARTIFACT} ./main.go
+	CGO_ENABLED=0  GOOS=linux go build -i -installsuffix cgo -ldflags '-w' -o ${ARTIFACT} ./main.go
+
+${PLUGIN_ARTIFACT}: ${SOURCES}
+	CGO_ENABLED=0 go build -i -installsuffix cgo -ldflags '-w' -o ${PLUGIN_PATH}/${PLUGIN_ARTIFACT} ${PLUGIN_PATH}/main.go
+
+plugin: ${PLUGIN_ARTIFACT} install-plugin
+
+install-plugin:
+	./hack/install-plugin.sh
 
 container: build
 	docker build -t $(PREFIX):$(TAG) .
@@ -40,5 +51,6 @@ push: container
 
 clean:
 	rm -f ${ARTIFACT}
+	rm -f ${PLUGIN_PATH}/${PLUGIN_ARTIFACT}
 
 .PHONY: build push clean test

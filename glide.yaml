@@ -3,7 +3,6 @@ import:
 - package: github.com/golang/glog
 - package: github.com/onsi/ginkgo
 - package: github.com/onsi/gomega
-- package: github.com/spf13/pflag
 - package: k8s.io/api
   subpackages:
   - batch/v1
@@ -51,3 +50,8 @@ import:
 - package: k8s.io/code-generator
   version: kubernetes-1.9.1
 - package: k8s.io/gengo
+- package: github.com/olekukonko/tablewriter
+- package: github.com/spf13/cobra
+  version: 0.0.3
+- package: github.com/spf13/pflag
+  version: 1.0.1

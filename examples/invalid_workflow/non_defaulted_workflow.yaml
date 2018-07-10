@@ -1,5 +1,5 @@
 kind: Workflow
-apiVersion: "example.com/v1"
+apiVersion: "workflow.k8s.io/v1"
 metadata:
   name: ciao-workflow
 spec:
