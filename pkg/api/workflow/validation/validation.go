@@ -1,4 +1,4 @@
-package v1
+package validation
 
 import (
 	"fmt"
@@ -12,17 +12,20 @@ import (
 	v1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	workflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	"github.com/amadeusitgroup/workflow-controller/pkg/util"
 )
 
 // ValidateWorkflow validates Workflow
-func ValidateWorkflow(workflow *Workflow) field.ErrorList {
+func ValidateWorkflow(workflow *workflowv1.Workflow) field.ErrorList {
 	allErrs := validation.ValidateObjectMeta(&workflow.ObjectMeta, true, validation.NameIsDNSSubdomain, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateWorkflowSpec(&(workflow.Spec), field.NewPath("spec"))...)
 	return allErrs
 }
 
 // ValidateWorkflowSpec validates WorkflowSpec
-func ValidateWorkflowSpec(spec *WorkflowSpec, fieldPath *field.Path) field.ErrorList {
+func ValidateWorkflowSpec(spec *workflowv1.WorkflowSpec, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if spec.ActiveDeadlineSeconds != nil {
 		allErrs = append(allErrs, validation.ValidateNonnegativeField(int64(*spec.ActiveDeadlineSeconds), fieldPath.Child("activeDeadlineSeconds"))...)
@@ -38,7 +41,7 @@ func ValidateWorkflowSpec(spec *WorkflowSpec, fieldPath *field.Path) field.Error
 	return allErrs
 }
 
-func topologicalSort(steps map[string]WorkflowStep, fieldPath *field.Path) ([]string, *field.Error) {
+func topologicalSort(steps map[string]workflowv1.WorkflowStep, fieldPath *field.Path) ([]string, *field.Error) {
 	sorted := make([]string, len(steps))
 	temporary := map[string]bool{}
 	permanent := map[string]bool{}
@@ -99,9 +102,9 @@ func topologicalSort(steps map[string]WorkflowStep, fieldPath *field.Path) ([]st
 
 // ValidateWorkflowSteps validates steps. It detects cycles (with topological sort) and checks
 // whether JobSpec are correct
-func ValidateWorkflowSteps(steps []WorkflowStep, fieldPath *field.Path) field.ErrorList {
+func ValidateWorkflowSteps(steps []workflowv1.WorkflowStep, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	stepsMap := make(map[string]WorkflowStep, len(steps))
+	stepsMap := make(map[string]workflowv1.WorkflowStep, len(steps))
 	for i := range steps {
 		if _, ok := stepsMap[steps[i].Name]; ok {
 			allErrs = append(allErrs, field.Duplicate(fieldPath.Child("steps"), steps[i].Name))
@@ -136,7 +139,7 @@ func ValidateExternalReference(externalReference *api.ObjectReference, fieldPath
 	return allErrs
 }
 
-func getWorkflowUnmodifiableSteps(workflow *Workflow) (running, completed map[string]bool) {
+func getWorkflowUnmodifiableSteps(workflow *workflowv1.Workflow) (running, completed map[string]bool) {
 	running = make(map[string]bool)
 	completed = make(map[string]bool)
 	if workflow.Status.Statuses == nil {
@@ -144,7 +147,7 @@ func getWorkflowUnmodifiableSteps(workflow *Workflow) (running, completed map[st
 	}
 	for _, step := range workflow.Spec.Steps {
 		key := step.Name
-		stepStatus := GetStepStatusByName(workflow, key)
+		stepStatus := util.GetStepStatusByName(workflow, key)
 		if stepStatus != nil {
 			if stepStatus.Complete {
 				completed[key] = true
@@ -157,7 +160,7 @@ func getWorkflowUnmodifiableSteps(workflow *Workflow) (running, completed map[st
 }
 
 // ValidateWorkflowUpdate validates Workflow during update
-func ValidateWorkflowUpdate(workflow, oldWorkflow *Workflow) field.ErrorList {
+func ValidateWorkflowUpdate(workflow, oldWorkflow *workflowv1.Workflow) field.ErrorList {
 	allErrs := validation.ValidateObjectMetaUpdate(&workflow.ObjectMeta, &oldWorkflow.ObjectMeta, field.NewPath("metadata"))
 	runningSteps, completedSteps := getWorkflowUnmodifiableSteps(oldWorkflow)
 	allCompleted := (len(completedSteps) == len(oldWorkflow.Spec.Steps)) // comparing size of maps
@@ -169,13 +172,13 @@ func ValidateWorkflowUpdate(workflow, oldWorkflow *Workflow) field.ErrorList {
 	return allErrs
 }
 
-func ValidateWorkflowUpdateStatus(workflow, oldWorkflow *Workflow) field.ErrorList {
+func ValidateWorkflowUpdateStatus(workflow, oldWorkflow *workflowv1.Workflow) field.ErrorList {
 	allErrs := validation.ValidateObjectMetaUpdate(&oldWorkflow.ObjectMeta, &workflow.ObjectMeta, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateWorkflowStatusUpdate(workflow.Status, oldWorkflow.Status)...)
 	return allErrs
 }
 
-func ValidateWorkflowSpecUpdate(spec, oldSpec *WorkflowSpec, running, completed map[string]bool, fieldPath *field.Path) field.ErrorList {
+func ValidateWorkflowSpecUpdate(spec, oldSpec *workflowv1.WorkflowSpec, running, completed map[string]bool, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, ValidateWorkflowSpec(spec, fieldPath)...)
 	allErrs = append(allErrs, validation.ValidateImmutableField(spec.Selector, oldSpec.Selector, fieldPath.Child("selector"))...)
@@ -218,14 +221,14 @@ func ValidateWorkflowSpecUpdate(spec, oldSpec *WorkflowSpec, running, completed 
 }
 
 // ValidateWorkflowStatus validates status
-func ValidateWorkflowStatus(status *WorkflowStatus, fieldPath *field.Path) field.ErrorList {
+func ValidateWorkflowStatus(status *workflowv1.WorkflowStatus, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	//TODO: @sdminonne add status validation
 	return allErrs
 }
 
 // ValidateWorkflowStatusUpdate validates WorkflowStatus during update
-func ValidateWorkflowStatusUpdate(status, oldStatus WorkflowStatus) field.ErrorList {
+func ValidateWorkflowStatusUpdate(status, oldStatus workflowv1.WorkflowStatus) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, ValidateWorkflowStatus(&status, field.NewPath("status"))...)
 	return allErrs

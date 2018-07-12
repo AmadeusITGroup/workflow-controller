@@ -19,6 +19,7 @@ import (
 
 	"github.com/amadeusitgroup/workflow-controller/pkg/api/workflow"
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	wvalidation "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/validation"
 	wclient "github.com/amadeusitgroup/workflow-controller/pkg/client"
 	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
@@ -175,7 +176,7 @@ func TestControllerSyncWorkflow(t *testing.T) {
 			startTime:  nil,
 			activeJobs: 0, succeededJobs: 0, failedJobs: 0,
 			customUpdateHandler: func(w *wapi.Workflow) error {
-				errs := wapi.ValidateWorkflow(w)
+				errs := wvalidation.ValidateWorkflow(w)
 				if len(errs) > 0 {
 					return fmt.Errorf("workflow %q not valid", w.Name)
 				}

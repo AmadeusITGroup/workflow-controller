@@ -1,18 +1,14 @@
-package v1
+package validation
 
 import (
 	"fmt"
 	"reflect"
 	"testing"
 
-	batchv1 "k8s.io/api/batch/v1"
-	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
-	api "k8s.io/api/core/v1"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	workflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	cronworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow/v1"
+	testingutil "github.com/amadeusitgroup/workflow-controller/pkg/util/testing"
 )
 
 func negative64() *int64 {
@@ -20,84 +16,29 @@ func negative64() *int64 {
 	return &v
 }
 
-// shamless copied from .../pkg/api/workflow/v1 TODO: create a testin package
-func goodJobTemplateSpec() *batchv2alpha1.JobTemplateSpec {
-	return &batchv2alpha1.JobTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{
-				"foo": "bar",
-			},
-		},
-		Spec: batchv1.JobSpec{
-			Template: api.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"foo": "bar",
-					},
-				},
-				Spec: api.PodSpec{
-					Containers: []api.Container{
-						{
-							Name:            "baz",
-							Image:           "foo/bar",
-							ImagePullPolicy: "IfNotPresent",
-						},
-					},
-					RestartPolicy: "OnFailure",
-					DNSPolicy:     "Default",
-				},
-			},
-		},
-	}
-}
-
-func newWorkflowTemplateSpec() WorkflowTemplateSpec {
-	return WorkflowTemplateSpec{
-		Spec: workflowv1.WorkflowSpec{
-			Steps: []workflowv1.WorkflowStep{
-				{
-					Name:        "one",
-					JobTemplate: goodJobTemplateSpec(),
-				},
-			},
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"a": "b"},
-			},
-		},
-	}
-}
-
-func newCronWorkflowSpec() *CronWorkflowSpec {
-	return &CronWorkflowSpec{
-		Schedule:          "* * * * *",
-		ConcurrencyPolicy: batchv2alpha1.AllowConcurrent,
-		WorkflowTemplate:  newWorkflowTemplateSpec(),
-	}
-}
-
 func TestValidateCronWorkflowSpec(t *testing.T) {
 	type args struct {
-		spec *CronWorkflowSpec
+		spec *cronworkflowv1.CronWorkflowSpec
 	}
 	tests := []struct {
 		name               string
 		args               args
-		tweakSpec          func(*CronWorkflowSpec) *CronWorkflowSpec
+		tweakSpec          func(*cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec
 		wantedErrorMessage string
 	}{
 		{
 			name: "good spec",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
 			wantedErrorMessage: "[]",
 		},
 		{
 			name: "bad schedule",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
 				s := spec.DeepCopy()
 				s.Schedule = "bad schedule"
 				return s
@@ -105,11 +46,23 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 			wantedErrorMessage: `[spec.schedule: Invalid value: "bad schedule": Expected exactly 5 fields, found 2: bad schedule]`,
 		},
 		{
+			name: "special characters",
+			args: args{
+				spec: testingutil.NewCronWorkflowSpec(),
+			},
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
+				s := spec.DeepCopy()
+				s.Schedule = "0,1  * * * *"
+				return s
+			},
+			wantedErrorMessage: `[]`,
+		},
+		{
 			name: "non-standard supported: @yearly",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
 				s := spec.DeepCopy()
 				s.Schedule = "@yearly"
 				return s
@@ -119,9 +72,9 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 		{
 			name: "non-standard supported: @annually",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
 				s := spec.DeepCopy()
 				s.Schedule = "@annually"
 				return s
@@ -131,9 +84,9 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 		{
 			name: "non-standard supported: @monthly",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
 				s := spec.DeepCopy()
 				s.Schedule = "@monthly"
 				return s
@@ -143,9 +96,9 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 		{
 			name: "non-standard supported: @weekly",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
 				s := spec.DeepCopy()
 				s.Schedule = "@weekly"
 				return s
@@ -155,9 +108,9 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 		{
 			name: "non-standard supported: @daily",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
 				s := spec.DeepCopy()
 				s.Schedule = "@daily"
 				return s
@@ -167,9 +120,9 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 		{
 			name: "non-standard NOT supported: @reboot",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
 				s := spec.DeepCopy()
 				s.Schedule = "@reboot"
 				return s
@@ -179,9 +132,9 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 		{
 			name: "non-standard supported: @hourly",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
 				s := spec.DeepCopy()
 				s.Schedule = "@hourly"
 				return s
@@ -191,9 +144,9 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 		{
 			name: "negative startingDeadlineSeconds",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
 				s := spec.DeepCopy()
 				s.StartingDeadlineSeconds = negative64()
 				return s
@@ -203,9 +156,9 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 		{
 			name: "bad concurrency policy",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
 				s := spec.DeepCopy()
 				s.ConcurrencyPolicy = ""
 				return s
@@ -215,9 +168,9 @@ func TestValidateCronWorkflowSpec(t *testing.T) {
 		{
 			name: "bad concurrency policy 2",
 			args: args{
-				spec: newCronWorkflowSpec(),
+				spec: testingutil.NewCronWorkflowSpec(),
 			},
-			tweakSpec: func(spec *CronWorkflowSpec) *CronWorkflowSpec {
+			tweakSpec: func(spec *cronworkflowv1.CronWorkflowSpec) *cronworkflowv1.CronWorkflowSpec {
 				s := spec.DeepCopy()
 				s.ConcurrencyPolicy = "mySpecialPolicy"
 				return s

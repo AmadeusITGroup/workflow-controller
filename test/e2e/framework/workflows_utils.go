@@ -14,6 +14,7 @@ import (
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	"github.com/amadeusitgroup/workflow-controller/pkg/controller"
+	"github.com/amadeusitgroup/workflow-controller/pkg/util"
 )
 
 // IsWorkflowFailedDueDeadline check whether a workflow failed due a deadline
@@ -249,7 +250,7 @@ func HOCheckStepFinished(workflowClient versioned.Interface, workflow *wapi.Work
 		if err != nil {
 			return err
 		}
-		stepStatus := controller.GetStepStatusByName(w, step)
+		stepStatus := util.GetStepStatusByName(w, step)
 		if stepStatus == nil {
 			return fmt.Errorf("unable to find step %q in %s/%s", step, w.Namespace, w.Name)
 		}

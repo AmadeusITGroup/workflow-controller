@@ -44,16 +44,6 @@ func GetStepByName(w *wapi.Workflow, stepName string) *wapi.WorkflowStep {
 	return nil
 }
 
-// GetStepStatusByName return a pointer to WorkflowStepStatus
-func GetStepStatusByName(w *wapi.Workflow, stepName string) *wapi.WorkflowStepStatus {
-	for i := range w.Status.Statuses {
-		if w.Status.Statuses[i].Name == stepName {
-			return &w.Status.Statuses[i]
-		}
-	}
-	return nil
-}
-
 func getJobAnnotationsSet(workflow *wapi.Workflow, template *batchv2.JobTemplateSpec) (labels.Set, error) {
 	desiredAnnotations := make(labels.Set)
 	for k, v := range workflow.Annotations {

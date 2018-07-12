@@ -1,61 +1,33 @@
-package v1
+package validation
 
 import (
 	"strings"
 	"testing"
 	"time"
 
-	batch "k8s.io/api/batch/v1"
-	batchv2 "k8s.io/api/batch/v2alpha1"
 	api "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	workflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
+	"github.com/amadeusitgroup/workflow-controller/pkg/util"
+	testingutil "github.com/amadeusitgroup/workflow-controller/pkg/util/testing"
 )
 
-func goodJobTemplateSpec() *batchv2.JobTemplateSpec {
-	return &batchv2.JobTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{
-				"foo": "bar",
-			},
-		},
-		Spec: batch.JobSpec{
-			Template: api.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"foo": "bar",
-					},
-				},
-				Spec: api.PodSpec{
-					Containers: []api.Container{
-						{
-							Name:            "baz",
-							Image:           "foo/bar",
-							ImagePullPolicy: "IfNotPresent",
-						},
-					},
-					RestartPolicy: "OnFailure",
-					DNSPolicy:     "Default",
-				},
-			},
-		},
-	}
-}
-
 func TestValidateWorkflowSpec(t *testing.T) {
-	successCases := map[string]Workflow{
+	successCases := map[string]workflowv1.Workflow{
 		"K1": {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mydag",
 				Namespace: metav1.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
 					{
 						Name:        "one",
-						JobTemplate: goodJobTemplateSpec(),
+						JobTemplate: testingutil.GoodJobTemplateSpec(),
 					},
 				},
 				Selector: &metav1.LabelSelector{
@@ -69,15 +41,15 @@ func TestValidateWorkflowSpec(t *testing.T) {
 				Namespace: api.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
 					{
 						Name:        "one",
-						JobTemplate: goodJobTemplateSpec(),
+						JobTemplate: testingutil.GoodJobTemplateSpec(),
 					},
 					{
 						Name:        "two",
-						JobTemplate: goodJobTemplateSpec(),
+						JobTemplate: testingutil.GoodJobTemplateSpec(),
 					},
 				},
 				Selector: &metav1.LabelSelector{
@@ -91,12 +63,12 @@ func TestValidateWorkflowSpec(t *testing.T) {
 				Namespace: api.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
-					{Name: "one", JobTemplate: goodJobTemplateSpec()},
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
+					{Name: "one", JobTemplate: testingutil.GoodJobTemplateSpec()},
 					{
 						Name:         "two",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"one"},
 					},
 				},
@@ -111,14 +83,14 @@ func TestValidateWorkflowSpec(t *testing.T) {
 				Namespace: api.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
-					{Name: "one", JobTemplate: goodJobTemplateSpec()},
-					{Name: "two", JobTemplate: goodJobTemplateSpec(),
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
+					{Name: "one", JobTemplate: testingutil.GoodJobTemplateSpec()},
+					{Name: "two", JobTemplate: testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"one"},
 					},
-					{Name: "three", JobTemplate: goodJobTemplateSpec()},
-					{Name: "four", JobTemplate: goodJobTemplateSpec(),
+					{Name: "three", JobTemplate: testingutil.GoodJobTemplateSpec()},
+					{Name: "four", JobTemplate: testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"three"},
 					},
 				},
@@ -133,20 +105,20 @@ func TestValidateWorkflowSpec(t *testing.T) {
 				Namespace: api.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
 					{
 						Name:        "one",
-						JobTemplate: goodJobTemplateSpec(),
+						JobTemplate: testingutil.GoodJobTemplateSpec(),
 					},
 					{
 						Name:         "two",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"one"},
 					},
 					{
 						Name:         "three",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"one", "two"},
 					},
 				},
@@ -163,18 +135,18 @@ func TestValidateWorkflowSpec(t *testing.T) {
 		}
 	}
 	negative64 := int64(-42)
-	errorCases := map[string]Workflow{
+	errorCases := map[string]workflowv1.Workflow{
 		"spec.steps: Forbidden: detected cycle [one]": {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "mydag",
 				Namespace: api.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
 					{
 						Name:         "one",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"one"},
 					},
 				},
@@ -189,16 +161,16 @@ func TestValidateWorkflowSpec(t *testing.T) {
 				Namespace: api.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
 					{
 						Name:         "one",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"two"},
 					},
 					{
 						Name:         "two",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"one"},
 					},
 				},
@@ -213,34 +185,34 @@ func TestValidateWorkflowSpec(t *testing.T) {
 				Namespace: api.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
 					{
 						Name:        "one",
-						JobTemplate: goodJobTemplateSpec()},
+						JobTemplate: testingutil.GoodJobTemplateSpec()},
 					{
 						Name:         "two",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"one"},
 					},
 					{
 						Name:         "three",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"two", "five"},
 					},
 					{
 						Name:         "four",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"three"},
 					},
 					{
 						Name:         "five",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"four"},
 					},
 					{
 						Name:         "six",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"five"},
 					},
 				},
@@ -255,14 +227,14 @@ func TestValidateWorkflowSpec(t *testing.T) {
 				Namespace: api.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
 					{
 						Name:        "one",
-						JobTemplate: goodJobTemplateSpec()},
+						JobTemplate: testingutil.GoodJobTemplateSpec()},
 					{
 						Name:         "two",
-						JobTemplate:  goodJobTemplateSpec(),
+						JobTemplate:  testingutil.GoodJobTemplateSpec(),
 						Dependencies: []string{"three"},
 					},
 				},
@@ -277,11 +249,11 @@ func TestValidateWorkflowSpec(t *testing.T) {
 				Namespace: api.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
 					{
 						Name:        "one",
-						JobTemplate: goodJobTemplateSpec(),
+						JobTemplate: testingutil.GoodJobTemplateSpec(),
 					},
 				},
 				ActiveDeadlineSeconds: &negative64,
@@ -296,11 +268,11 @@ func TestValidateWorkflowSpec(t *testing.T) {
 				Namespace: api.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
 					{
 						Name:        "one",
-						JobTemplate: goodJobTemplateSpec(),
+						JobTemplate: testingutil.GoodJobTemplateSpec(),
 					},
 				},
 			},
@@ -311,8 +283,8 @@ func TestValidateWorkflowSpec(t *testing.T) {
 				Namespace: api.NamespaceDefault,
 				UID:       types.UID("1uid1cafe"),
 			},
-			Spec: WorkflowSpec{
-				Steps: []WorkflowStep{
+			Spec: workflowv1.WorkflowSpec{
+				Steps: []workflowv1.WorkflowStep{
 					{Name: "one"},
 				},
 				Selector: &metav1.LabelSelector{
@@ -336,32 +308,32 @@ func TestValidateWorkflowSpec(t *testing.T) {
 	}
 }
 
-func NewWorkflow() Workflow {
-	return Workflow{
+func NewWorkflow() workflowv1.Workflow {
+	return workflowv1.Workflow{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "mydag",
 			Namespace:       api.NamespaceDefault,
 			UID:             types.UID("1uid1cafe"),
 			ResourceVersion: "42",
 		},
-		Spec: WorkflowSpec{
-			Steps: []WorkflowStep{
+		Spec: workflowv1.WorkflowSpec{
+			Steps: []workflowv1.WorkflowStep{
 				{
 					Name:        "one",
-					JobTemplate: goodJobTemplateSpec(),
+					JobTemplate: testingutil.GoodJobTemplateSpec(),
 				},
 				{
 					Name:        "two",
-					JobTemplate: goodJobTemplateSpec(),
+					JobTemplate: testingutil.GoodJobTemplateSpec(),
 				},
 			},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"a": "b"},
 			},
 		},
-		Status: WorkflowStatus{
+		Status: workflowv1.WorkflowStatus{
 			StartTime: &metav1.Time{time.Date(2009, time.January, 1, 27, 6, 25, 0, time.UTC)},
-			Statuses: []WorkflowStepStatus{
+			Statuses: []workflowv1.WorkflowStepStatus{
 				{
 					Name:     "one",
 					Complete: false,
@@ -375,101 +347,91 @@ func NewWorkflow() Workflow {
 	}
 }
 
-func deleteStepStatusByName(statuses *[]WorkflowStepStatus, stepName string) {
-	for i := range *statuses {
-		if (*statuses)[i].Name == stepName {
-			*statuses = (*statuses)[:i+copy((*statuses)[i:], (*statuses)[i+1:])]
-			return
-		}
-	}
-	panic("cannot find stepStatus")
-}
-
 func TestValidateWorkflowUpdate(t *testing.T) {
 	type WorkflowPair struct {
-		current      Workflow
-		patchCurrent func(*Workflow)
-		update       Workflow
-		patchUpdate  func(*Workflow)
+		current      workflowv1.Workflow
+		patchCurrent func(*workflowv1.Workflow)
+		update       workflowv1.Workflow
+		patchUpdate  func(*workflowv1.Workflow)
 	}
 	errorCases := map[string]WorkflowPair{
 
 		"metadata.resourceVersion: Invalid value: \"\": must be specified for an update": {
 			current: NewWorkflow(),
 			update:  NewWorkflow(),
-			patchUpdate: func(w *Workflow) {
+			patchUpdate: func(w *workflowv1.Workflow) {
 				w.ObjectMeta.ResourceVersion = ""
 			},
 		},
 		"workflow: Forbidden: cannot update completed workflow": {
 			current: NewWorkflow(),
-			patchCurrent: func(w *Workflow) {
-				GetStepStatusByName(w, "one").Complete = true
-				GetStepStatusByName(w, "two").Complete = true
+			patchCurrent: func(w *workflowv1.Workflow) {
+				util.GetStepStatusByName(w, "one").Complete = true
+				util.GetStepStatusByName(w, "two").Complete = true
 			},
 			update: NewWorkflow(),
 		},
 		"spec.steps: Forbidden: cannot delete running step \"one\"": {
 			current: NewWorkflow(),
-			patchCurrent: func(w *Workflow) {
-				deleteStepStatusByName(&(w.Status.Statuses), "two") // one is running
+			patchCurrent: func(w *workflowv1.Workflow) {
+				testingutil.DeleteStepStatusByName(&(w.Status.Statuses), "two") // one is running
 			},
 			update: NewWorkflow(),
-			patchUpdate: func(w *Workflow) {
-				RemoveStepFromSpec(w, "one")
-				deleteStepStatusByName(&(w.Status.Statuses), "two")
+			patchUpdate: func(w *workflowv1.Workflow) {
+				util.RemoveStepFromSpec(w, "one")
+				testingutil.DeleteStepStatusByName(&(w.Status.Statuses), "two")
 			},
 		},
 		"spec.steps: Forbidden: cannot modify running step \"one\"": {
 			current: NewWorkflow(),
-			patchCurrent: func(w *Workflow) {
-				deleteStepStatusByName(&(w.Status.Statuses), "two") // one is running
+			patchCurrent: func(w *workflowv1.Workflow) {
+				testingutil.DeleteStepStatusByName(&(w.Status.Statuses), "two") // one is running
 			},
 			update: NewWorkflow(),
-			patchUpdate: func(w *Workflow) {
+			patchUpdate: func(w *workflowv1.Workflow) {
 				// modify "one"
-				s := GetStepByName(w, "one")
+				s := util.GetStepByName(w, "one")
 				if s == nil {
 					t.Fatalf("cannot update workflow")
 				}
 				s.JobTemplate.Labels = make(map[string]string)
 				s.JobTemplate.Labels["foo"] = "bar2"
 				//w.Spec.Steps["one"] = s
-				deleteStepStatusByName(&(w.Status.Statuses), "two")
+				testingutil.DeleteStepStatusByName(&(w.Status.Statuses), "two")
 				//delete(w.Status.Statuses, "two")
 			},
 		},
 
 		"spec.steps: Forbidden: cannot delete completed step \"one\"": {
 			current: NewWorkflow(),
-			patchCurrent: func(w *Workflow) {
-				GetStepStatusByName(w, "one").Complete = true
-				deleteStepStatusByName(&(w.Status.Statuses), "two")
+			patchCurrent: func(w *workflowv1.Workflow) {
+				util.GetStepStatusByName(w, "one").Complete = true
+				testingutil.DeleteStepStatusByName(&(w.Status.Statuses), "two")
 			},
 			update: NewWorkflow(),
-			patchUpdate: func(w *Workflow) {
-				RemoveStepFromSpec(w, "one")
-				deleteStepStatusByName(&(w.Status.Statuses), "two")
+			patchUpdate: func(w *workflowv1.Workflow) {
+				util.RemoveStepFromSpec(w, "one")
+				testingutil.DeleteStepStatusByName(&(w.Status.Statuses), "two")
 			},
 		},
 		"spec.steps: Forbidden: cannot modify completed step \"one\"": {
 			current: NewWorkflow(),
-			patchCurrent: func(w *Workflow) {
-				s := GetStepStatusByName(w, "one")
+			patchCurrent: func(w *workflowv1.Workflow) {
+				s := util.GetStepStatusByName(w, "one")
 				s.Complete = true // one is complete
 				//w.Status.Statuses["one"] = s
-				deleteStepStatusByName(&(w.Status.Statuses), "two") // two is running
+				testingutil.DeleteStepStatusByName(&(w.Status.Statuses), "two") // two is running
 			},
 			update: NewWorkflow(),
-			patchUpdate: func(w *Workflow) {
+			patchUpdate: func(w *workflowv1.Workflow) {
 				// modify "one"
-				s := GetStepByName(w, "one")
+				s := util.GetStepByName(w, "one")
 				if s == nil {
 					t.Fatalf("unable to patch workflow")
 				}
 				s.JobTemplate.Labels = make(map[string]string)
 				s.JobTemplate.Labels["foo"] = "bar2"
-				deleteStepStatusByName(&(w.Status.Statuses), "two") // two always running
+				testingutil.DeleteStepStatusByName(&(w.Status.Statuses), "two") // two always running
 			},
 		},
 	}

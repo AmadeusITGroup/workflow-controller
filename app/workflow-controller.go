@@ -47,11 +47,10 @@ import (
 
 // WorkflowController contains all info to run the worklow controller app
 type WorkflowController struct {
-	kubeInformerFactory        kubeinformers.SharedInformerFactory
-	workflowInformerFactory    winformers.SharedInformerFactory
-	workflowController         *controller.WorkflowController
-	cronWorkflowInfomerFactory winformers.SharedInformerFactory
-	cronWorkflowController     *controller.CronWorkflowController
+	kubeInformerFactory     kubeinformers.SharedInformerFactory
+	workflowInformerFactory winformers.SharedInformerFactory
+	workflowController      *controller.WorkflowController
+	cronWorkflowController  *controller.CronWorkflowController
 
 	GC         *garbagecollector.GarbageCollector
 	httpServer *http.Server // Used for Probes and later prometheus
@@ -107,8 +106,7 @@ func NewWorkflowControllerApp(c *Config) *WorkflowController {
 	if err != nil {
 		glog.Fatalf("Unable to initialize CronWorkflow client: %v", err)
 	}
-	cronWorkflowInformerFactory := winformers.NewSharedInformerFactory(cronWorkflowClient, time.Second*30)
-	cronWorkflowCtrl := controller.NewCronWorkflowController(cronWorkflowClient, kubeClient, workflowInformerFactory, cronWorkflowInformerFactory)
+	cronWorkflowCtrl := controller.NewCronWorkflowController(workflowClient, cronWorkflowClient, kubeClient)
 
 	health := configureHealth(workflowCtrl) // configure readiness and liveness probes
 
@@ -117,8 +115,7 @@ func NewWorkflowControllerApp(c *Config) *WorkflowController {
 		workflowInformerFactory: workflowInformerFactory,
 		workflowController:      workflowCtrl,
 		GC:                      garbagecollector.NewGarbageCollector(workflowClient, kubeClient, workflowInformerFactory),
-		cronWorkflowInfomerFactory: cronWorkflowInformerFactory,
-		cronWorkflowController:     cronWorkflowCtrl,
+		cronWorkflowController: cronWorkflowCtrl,
 
 		httpServer: &http.Server{Addr: c.ListenHTTPAddr, Handler: health},
 	}
@@ -134,7 +131,6 @@ func (c *WorkflowController) Run() {
 		c.workflowInformerFactory.Start(ctx.Done())
 		go c.workflowController.Run(ctx)
 
-		c.cronWorkflowInfomerFactory.Start(ctx.Done())
 		go c.cronWorkflowController.Run(ctx)
 
 		go c.runHTTPServer(ctx)

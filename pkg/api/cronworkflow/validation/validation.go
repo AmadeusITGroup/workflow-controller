@@ -1,4 +1,4 @@
-package v1
+package validation
 
 import (
 	"github.com/robfig/cron"
@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
+	cronworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow/v1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 )
 
@@ -18,7 +19,7 @@ func validateScheduleFormat(schedule string, fldPath *field.Path) field.ErrorLis
 }
 
 // ValidateCronWorkflow validates Workflow
-func ValidateCronWorkflow(workflow *CronWorkflow) field.ErrorList {
+func ValidateCronWorkflow(workflow *cronworkflowv1.CronWorkflow) field.ErrorList {
 	allErrs := validation.ValidateObjectMeta(&workflow.ObjectMeta, true, validation.NameIsDNSSubdomain, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateCronWorkflowSpec(&(workflow.Spec), field.NewPath("spec"))...)
 	return allErrs
@@ -40,7 +41,7 @@ func validateConcurrencyPolicy(concurrencyPolicy *batchv2alpha1.ConcurrencyPolic
 }
 
 // ValidateCronWorkflowSpec validates WorkflowSpec
-func ValidateCronWorkflowSpec(spec *CronWorkflowSpec, fieldPath *field.Path) field.ErrorList {
+func ValidateCronWorkflowSpec(spec *cronworkflowv1.CronWorkflowSpec, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateScheduleFormat(spec.Schedule, fieldPath.Child("schedule"))...)
 	if spec.StartingDeadlineSeconds != nil {
@@ -59,34 +60,34 @@ func ValidateCronWorkflowSpec(spec *CronWorkflowSpec, fieldPath *field.Path) fie
 }
 
 // ValidateCronWorkflowUpdate validates Workflow during update
-func ValidateCronWorkflowUpdate(workflow, oldWorkflow *CronWorkflow) field.ErrorList {
+func ValidateCronWorkflowUpdate(workflow, oldWorkflow *cronworkflowv1.CronWorkflow) field.ErrorList {
 	allErrs := validation.ValidateObjectMetaUpdate(&workflow.ObjectMeta, &oldWorkflow.ObjectMeta, field.NewPath("metadata"))
 	return allErrs
 }
 
 // ValidateCronWorkflowUpdateStatus valides CronWorkflow status update
-func ValidateCronWorkflowUpdateStatus(workflow, oldWorkflow *CronWorkflow) field.ErrorList {
+func ValidateCronWorkflowUpdateStatus(workflow, oldWorkflow *cronworkflowv1.CronWorkflow) field.ErrorList {
 	allErrs := validation.ValidateObjectMetaUpdate(&oldWorkflow.ObjectMeta, &workflow.ObjectMeta, field.NewPath("metadata"))
 	allErrs = append(allErrs, ValidateCronWorkflowStatusUpdate(workflow.Status, oldWorkflow.Status)...)
 	return allErrs
 }
 
 // ValidateCronWorkflowSpecUpdate validates CronWorkfow spec update
-func ValidateCronWorkflowSpecUpdate(spec, oldSpec *CronWorkflowSpec, running, completed map[string]bool, fieldPath *field.Path) field.ErrorList {
+func ValidateCronWorkflowSpecUpdate(spec, oldSpec *cronworkflowv1.CronWorkflowSpec, running, completed map[string]bool, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, ValidateCronWorkflowSpec(spec, fieldPath)...)
 	return allErrs
 }
 
 // ValidateCronWorkflowStatus validates status
-func ValidateCronWorkflowStatus(status *CronWorkflowStatus, fieldPath *field.Path) field.ErrorList {
+func ValidateCronWorkflowStatus(status *cronworkflowv1.CronWorkflowStatus, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	//TODO: @sdminonne add status validation
 	return allErrs
 }
 
 // ValidateCronWorkflowStatusUpdate validates WorkflowStatus during update
-func ValidateCronWorkflowStatusUpdate(status, oldStatus CronWorkflowStatus) field.ErrorList {
+func ValidateCronWorkflowStatusUpdate(status, oldStatus cronworkflowv1.CronWorkflowStatus) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, ValidateCronWorkflowStatus(&status, field.NewPath("status"))...)
 	return allErrs

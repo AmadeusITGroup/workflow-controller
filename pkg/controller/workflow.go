@@ -28,6 +28,9 @@ import (
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/workqueue"
 
+	wvalidation "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/validation"
+	"github.com/amadeusitgroup/workflow-controller/pkg/util"
+
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 	wclientset "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
@@ -212,7 +215,7 @@ func (w *WorkflowController) sync(key string) error {
 	}
 
 	// Validation. We always revalidate Workflow since any update must be re-checked.
-	if errs := wapi.ValidateWorkflow(sharedWorkflow); errs != nil && len(errs) > 0 {
+	if errs := wvalidation.ValidateWorkflow(sharedWorkflow); errs != nil && len(errs) > 0 {
 		glog.Errorf("WorkflowController.sync Worfklow %s/%s not valid: %v", namespace, name, errs)
 		if w.config.RemoveIvalidWorkflow {
 			glog.Errorf("Invalid workflow %s/%s is going to be removed", namespace, name)
@@ -435,7 +438,7 @@ func (w *WorkflowController) manageWorkflow(workflow *wapi.Workflow) error {
 	workflowComplete := true
 	for i := range workflow.Spec.Steps {
 		stepName := workflow.Spec.Steps[i].Name
-		stepStatus := wapi.GetStepStatusByName(workflow, stepName)
+		stepStatus := util.GetStepStatusByName(workflow, stepName)
 		if stepStatus != nil && stepStatus.Complete {
 			continue
 		}
@@ -475,7 +478,7 @@ func (w *WorkflowController) manageWorkflow(workflow *wapi.Workflow) error {
 func (w *WorkflowController) manageWorkflowJobStep(workflow *wapi.Workflow, stepName string, step *wapi.WorkflowStep) bool {
 	workflowUpdated := false
 	for _, dependencyName := range step.Dependencies {
-		dependencyStatus := GetStepStatusByName(workflow, dependencyName)
+		dependencyStatus := util.GetStepStatusByName(workflow, dependencyName)
 		if dependencyStatus == nil || !dependencyStatus.Complete {
 			glog.V(4).Infof("Workflow %s/%s: dependency %q not satisfied for %q", workflow.Namespace, workflow.Name, dependencyName, stepName)
 			return workflowUpdated
@@ -508,7 +511,7 @@ func (w *WorkflowController) manageWorkflowJobStep(workflow *wapi.Workflow, step
 			return false
 		}
 		jobFinished := IsJobFinished(job)
-		stepStatus := GetStepStatusByName(workflow, stepName)
+		stepStatus := util.GetStepStatusByName(workflow, stepName)
 		if stepStatus == nil {
 			stepStatus = &wapi.WorkflowStepStatus{
 				Name:      stepName,
