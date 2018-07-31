@@ -70,7 +70,11 @@ func fetchLabelsSetFromLabelSelector(selector *metav1.LabelSelector) labels.Set 
 
 func getJobLabelsSet(workflow *wapi.Workflow, template *batchv2.JobTemplateSpec, stepName string) (labels.Set, error) {
 	desiredLabels := fetchLabelsSetFromLabelSelector(workflow.Spec.Selector)
-	for k, v := range template.Labels {
+
+        // Job should also get template.metadata.labels for monitoring metrics.
+        // These would ordinarily only be applied to the Pod running the Job,
+        // but the CronJob controller does apply them to its Job.
+        for k, v := range template.Spec.Template.ObjectMeta.Labels {
 		desiredLabels[k] = v
 	}
 	desiredLabels[WorkflowLabelKey] = workflow.Name // add workflow name to the job  labels
