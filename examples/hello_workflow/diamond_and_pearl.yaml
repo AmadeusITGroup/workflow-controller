@@ -1,4 +1,4 @@
-apiVersion: "dag.example.com/v1"
+apiVersion: "workflow.k8s.io/v1"
 kind: Workflow
 metadata:
   name: dandpl

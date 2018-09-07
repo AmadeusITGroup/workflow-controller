@@ -25,6 +25,7 @@ _testmain.go
 .DS_Store
 
 workflow-controller
+/kubectl-plugin/kubectl-plugin
 .vscode
 .vscode/*
 
