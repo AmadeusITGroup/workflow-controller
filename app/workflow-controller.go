@@ -18,7 +18,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -47,13 +46,18 @@ import (
 
 // WorkflowController contains all info to run the worklow controller app
 type WorkflowController struct {
-	kubeInformerFactory        kubeinformers.SharedInformerFactory
-	workflowInformerFactory    winformers.SharedInformerFactory
-	workflowController         *controller.WorkflowController
+	kubeInformerFactory     kubeinformers.SharedInformerFactory
+	workflowInformerFactory winformers.SharedInformerFactory
+	workflowController      *controller.WorkflowController
+	workflowGC              *garbagecollector.GarbageCollector
+
 	cronWorkflowInfomerFactory winformers.SharedInformerFactory
 	cronWorkflowController     *controller.CronWorkflowController
 
-	GC         *garbagecollector.GarbageCollector
+	daemonSetJobController     *controller.DaemonSetJobController
+	daemonSetJobInfomerFactory winformers.SharedInformerFactory
+	daemonSetJobGC             *garbagecollector.DaemonSetJobGarbageCollector
+
 	httpServer *http.Server // Used for Probes and later prometheus
 }
 
@@ -87,9 +91,14 @@ func NewWorkflowControllerApp(c *Config) *WorkflowController {
 			glog.Fatalf("Unable to define Workflow resource:%v", err)
 		}
 
-		_, err = wclient.DefineCronWorklowResource(apiextensionsclientset)
+		_, err = wclient.DefineCronWorkflowResource(apiextensionsclientset)
 		if err != nil && !apierrors.IsAlreadyExists(err) { // TODO:
 			glog.Fatalf("Unable to define CronWorkflow resource:%v", err)
+		}
+
+		_, err = wclient.DefineDaemonSetJobResource(apiextensionsclientset)
+		if err != nil && !apierrors.IsAlreadyExists(err) { // TODO:
+			glog.Fatalf("Unable to define DaemonSetJob resource:%v", err)
 		}
 	}
 
@@ -109,15 +118,32 @@ func NewWorkflowControllerApp(c *Config) *WorkflowController {
 	}
 	cronWorkflowInformerFactory := winformers.NewSharedInformerFactory(cronWorkflowClient, time.Second*30)
 	cronWorkflowCtrl := controller.NewCronWorkflowController(cronWorkflowClient, kubeClient)
-	health := configureHealth(workflowCtrl) // configure readiness and liveness probes
+
+	daemonSetJobClient, err := wclient.NewDaemonSetJobClient(kubeConfig)
+	if err != nil {
+		glog.Fatalf("Unable to initialize DaemonSetJob client: %v", err)
+	}
+	daemonSetJobInformerFactory := winformers.NewSharedInformerFactory(daemonSetJobClient, time.Second*30)
+	daemonSetJobCtrl := controller.NewDaemonSetJobController(daemonSetJobClient, kubeClient, kubeInformerFactory, daemonSetJobInformerFactory)
+
+	// configure readiness and liveness probes
+	health := healthcheck.NewHandler()
+	workflowCtrl.AddHealthCheck(health)
+	cronWorkflowCtrl.AddHealthCheck(health)
+	daemonSetJobCtrl.AddHealthCheck(health)
 
 	return &WorkflowController{
 		kubeInformerFactory:     kubeInformerFactory,
 		workflowInformerFactory: workflowInformerFactory,
 		workflowController:      workflowCtrl,
-		GC:                      garbagecollector.NewGarbageCollector(workflowClient, kubeClient, workflowInformerFactory),
+		workflowGC:              garbagecollector.NewGarbageCollector(workflowClient, kubeClient, workflowInformerFactory),
+
 		cronWorkflowInfomerFactory: cronWorkflowInformerFactory,
 		cronWorkflowController:     cronWorkflowCtrl,
+
+		daemonSetJobInfomerFactory: daemonSetJobInformerFactory,
+		daemonSetJobController:     daemonSetJobCtrl,
+		daemonSetJobGC:             garbagecollector.NewDaemonSetJobGarbageCollector(daemonSetJobClient, kubeClient, daemonSetJobInformerFactory),
 
 		httpServer: &http.Server{Addr: c.ListenHTTPAddr, Handler: health},
 	}
@@ -130,51 +156,47 @@ func (c *WorkflowController) Run() {
 		go handleSignal(cancelFunc)
 		c.kubeInformerFactory.Start(ctx.Done())
 		c.workflowInformerFactory.Start(ctx.Done())
-		c.runGC(ctx)
+		c.runGCs(ctx)
 		go c.runHTTPServer(ctx)
-		c.cronWorkflowInfomerFactory.Start(ctx.Done())
 		c.workflowInformerFactory.Start(ctx.Done())
+		c.cronWorkflowInfomerFactory.Start(ctx.Done())
+		c.daemonSetJobInfomerFactory.Start(ctx.Done())
+		go c.daemonSetJobController.Run(ctx)
 		c.workflowController.Run(ctx)
-		// c.cronWorkflowController.Run(ctx): TODO: activates this
+		//c.cronWorkflowController.Run(ctx)
+
 	}
 }
 
-func (c *WorkflowController) runGC(ctx context.Context) {
+func (c *WorkflowController) runGCs(ctx context.Context) {
 	go func() {
-		if !cache.WaitForCacheSync(ctx.Done(), c.GC.WorkflowSynced) {
+		if !cache.WaitForCacheSync(ctx.Done(), c.workflowGC.WorkflowSynced) {
 			glog.Errorf("Timed out waiting for caches to sync")
 		}
 		wait.Until(func() {
-			err := c.GC.CollectWorkflowJobs()
+			err := c.workflowGC.CollectWorkflowJobs()
 			if err != nil {
 				glog.Errorf("collecting workflow jobs: %v", err)
 			}
 		}, garbagecollector.Interval, ctx.Done())
 	}()
-}
-
-func configureHealth(c *controller.WorkflowController) healthcheck.Handler {
-	health := healthcheck.NewHandler()
-	health.AddReadinessCheck("Workflow_cache_sync", func() error {
-		if c.WorkflowSynced() {
-			return nil
+	go func() {
+		if !cache.WaitForCacheSync(ctx.Done(), c.daemonSetJobGC.DaemonSetJobSynced) {
+			glog.Errorf("Timed out waiting for caches to sync")
 		}
-		return fmt.Errorf("Workflow cache not sync")
-	})
-	health.AddReadinessCheck("Job_cache_sync", func() error {
-		if c.JobSynced() {
-			return nil
-		}
-		return fmt.Errorf("Job cache not sync")
-	})
-
-	return health
+		wait.Until(func() {
+			err := c.daemonSetJobGC.CollectDaemonSetJobJobs()
+			if err != nil {
+				glog.Errorf("collecting daemonsetjob jobs: %v", err)
+			}
+		}, garbagecollector.Interval, ctx.Done())
+	}()
 }
 
 func (c *WorkflowController) runHTTPServer(ctx context.Context) error {
 
 	go func() {
-		glog.Info("Listening on http://%s\n", c.httpServer.Addr)
+		glog.Infof("Listening on http://%s\n", c.httpServer.Addr)
 
 		if err := c.httpServer.ListenAndServe(); err != nil {
 			glog.Error("Http server error: ", err)

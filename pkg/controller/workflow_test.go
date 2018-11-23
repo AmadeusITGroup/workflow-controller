@@ -7,7 +7,6 @@ import (
 	"time"
 
 	batch "k8s.io/api/batch/v1"
-	batchv2 "k8s.io/api/batch/v2alpha1"
 	api "k8s.io/api/core/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,32 +53,6 @@ func newWorkflow(count int32, startTime *metav1.Time) *wapi.Workflow {
 	return &workflow
 }
 
-// utility function to create a JobTemplateSpec
-func newJobTemplateSpec() *batchv2.JobTemplateSpec {
-	return &batchv2.JobTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{
-				"foo": "bar",
-			},
-		},
-		Spec: batch.JobSpec{
-			Template: api.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"foo": "bar",
-					},
-				},
-				Spec: api.PodSpec{
-					RestartPolicy: "Never",
-					Containers: []api.Container{
-						{Image: "foo/bar"},
-					},
-				},
-			},
-		},
-	}
-}
-
 // create count jobs with the given state (Active, Complete, Failed) for the given workflow
 func newJobList(count int32, fromIndex int32, status batch.JobConditionType, workflow *wapi.Workflow) []batch.Job {
 	var succeededPods, failedPods, activePods int32
@@ -102,7 +75,7 @@ func newJobList(count int32, fromIndex int32, status batch.JobConditionType, wor
 		stepIndex := i + fromIndex
 		stepName := fmt.Sprintf("step-%v", stepIndex)
 		// get labels
-		labelset, _ := getJobLabelsSet(workflow, workflow.Spec.Steps[stepIndex].JobTemplate, stepName)
+		labelset, _ := getJobLabelsSetFromWorkflow(workflow, workflow.Spec.Steps[stepIndex].JobTemplate, stepName)
 		labels := map[string]string{}
 		for k, v := range labelset {
 			labels[k] = v
@@ -340,7 +313,7 @@ func TestControllerRun(t *testing.T) {
 			JobSynced:            func() bool { return true },
 			WorkflowSynced:       func() bool { return true },
 			expectedError:        true,
-			expectedErrorMessage: "WorkflowController.sync - Workflow deafult/error not valid",
+			expectedErrorMessage: "WorkflowController.sync - Workflow default/error not valid",
 		},
 	}
 	for name, tc := range testCases {

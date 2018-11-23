@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	dapi "github.com/amadeusitgroup/workflow-controller/pkg/api/daemonsetjob/v1"
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 )
 
@@ -54,9 +55,9 @@ func GetStepStatusByName(w *wapi.Workflow, stepName string) *wapi.WorkflowStepSt
 	return nil
 }
 
-func getJobAnnotationsSet(workflow *wapi.Workflow, template *batchv2.JobTemplateSpec) (labels.Set, error) {
+func getJobAnnotationsSet(obj *metav1.ObjectMeta, template *batchv2.JobTemplateSpec) (labels.Set, error) {
 	desiredAnnotations := make(labels.Set)
-	for k, v := range workflow.Annotations {
+	for k, v := range obj.Annotations {
 		desiredAnnotations[k] = v
 	}
 	// TODO: add createdByRef
@@ -68,13 +69,13 @@ func fetchLabelsSetFromLabelSelector(selector *metav1.LabelSelector) labels.Set 
 	return selector.MatchLabels
 }
 
-func getJobLabelsSet(workflow *wapi.Workflow, template *batchv2.JobTemplateSpec, stepName string) (labels.Set, error) {
+func getJobLabelsSetFromWorkflow(workflow *wapi.Workflow, template *batchv2.JobTemplateSpec, stepName string) (labels.Set, error) {
 	desiredLabels := fetchLabelsSetFromLabelSelector(workflow.Spec.Selector)
 
-        // Job should also get template.metadata.labels for monitoring metrics.
-        // These would ordinarily only be applied to the Pod running the Job,
-        // but the CronJob controller does apply them to its Job.
-        for k, v := range template.Spec.Template.ObjectMeta.Labels {
+	// Job should also get template.metadata.labels for monitoring metrics.
+	// These would ordinarily only be applied to the Pod running the Job,
+	// but the CronJob controller does apply them to its Job.
+	for k, v := range template.Spec.Template.ObjectMeta.Labels {
 		desiredLabels[k] = v
 	}
 	desiredLabels[WorkflowLabelKey] = workflow.Name // add workflow name to the job  labels
@@ -82,9 +83,22 @@ func getJobLabelsSet(workflow *wapi.Workflow, template *batchv2.JobTemplateSpec,
 	return desiredLabels, nil
 }
 
+func getJobLabelsSetFromDaemonSetJob(daemonsetjob *dapi.DaemonSetJob, template *batchv2.JobTemplateSpec) (labels.Set, error) {
+	desiredLabels := fetchLabelsSetFromLabelSelector(daemonsetjob.Spec.Selector)
+
+	// Job should also get template.metadata.labels for monitoring metrics.
+	// These would ordinarily only be applied to the Pod running the Job,
+	// but the CronJob controller does apply them to its Job.
+	for k, v := range template.Spec.Template.ObjectMeta.Labels {
+		desiredLabels[k] = v
+	}
+	desiredLabels[DaemonSetJobLabelKey] = daemonsetjob.Name // add daemonsetjob name to the job  labels
+	return desiredLabels, nil
+}
+
 // createWorkflowJobLabelSelector creates label selector to select the jobs related to a workflow, stepName
 func createWorkflowJobLabelSelector(workflow *wapi.Workflow, template *batchv2.JobTemplateSpec, stepName string) labels.Selector {
-	set, err := getJobLabelsSet(workflow, template, stepName)
+	set, err := getJobLabelsSetFromWorkflow(workflow, template, stepName)
 	if err != nil {
 		return nil
 	}
@@ -97,12 +111,12 @@ func inferrWorkflowLabelSelectorForJobs(workflow *wapi.Workflow) labels.Selector
 	return labels.SelectorFromSet(set)
 }
 
-func buildOwnerReference(workflow *wapi.Workflow) metav1.OwnerReference {
+func buildOwnerReference(obj *metav1.ObjectMeta) metav1.OwnerReference {
 	controllerRef := metav1.OwnerReference{
 		APIVersion:         wapi.SchemeGroupVersion.String(),
 		Kind:               wapi.ResourceKind,
-		Name:               workflow.Name,
-		UID:                workflow.UID,
+		Name:               obj.Name,
+		UID:                obj.UID,
 		BlockOwnerDeletion: boolPtr(true),
 		Controller:         boolPtr(true),
 	}

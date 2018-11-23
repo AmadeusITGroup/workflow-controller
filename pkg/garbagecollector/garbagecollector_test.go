@@ -124,7 +124,7 @@ func TestGarbageCollector_CollectWorkflowJobs(t *testing.T) {
 				gc.KubeClient = fakeClient
 				return gc
 			},
-			errorMessage: "Unable to find workflow name for job: /testjob",
+			errorMessage: "unable to find workflow name for job: /testjob",
 		},
 		"no workflow found for job": {
 			TweakGarbageCollector: func(gc *GarbageCollector) *GarbageCollector {
@@ -170,16 +170,6 @@ func TestGarbageCollector_CollectWorkflowJobs(t *testing.T) {
 				t.Errorf("%q\nExpected error: `%s`\nBut got       : `%s`\n", tn, tt.errorMessage, errorMessage)
 			}
 		})
-	}
-}
-
-func createJobWithLabels(name string, labels map[string]string) batchv1.Job {
-	return batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels,
-		},
-		Spec: batchv1.JobSpec{},
 	}
 }
 

@@ -241,11 +241,6 @@ func (in *DaemonSetJobStatus) DeepCopyInto(out *DaemonSetJobStatus) {
 			(*in).DeepCopyInto(*out)
 		}
 	}
-	if in.Statuses != nil {
-		in, out := &in.Statuses, &out.Statuses
-		*out = make([]DaemonSetJobNodeJobStatus, len(*in))
-		copy(*out, *in)
-	}
 	return
 }
 

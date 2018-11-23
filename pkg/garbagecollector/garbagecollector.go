@@ -3,7 +3,6 @@ package garbagecollector
 import (
 	"fmt"
 	"path"
-	"time"
 
 	"github.com/golang/glog"
 
@@ -19,11 +18,6 @@ import (
 	wlisters "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/workflow/v1"
 
 	"github.com/amadeusitgroup/workflow-controller/pkg/controller"
-)
-
-const (
-	// Interval represent the interval to run Garabge Collection
-	Interval time.Duration = 10 * time.Second
 )
 
 // GarbageCollector represents a Workflow Garbage Collector.
@@ -60,7 +54,7 @@ func (c *GarbageCollector) CollectWorkflowJobs() error {
 	for _, job := range jobs.Items {
 		workflowName, found := job.Labels[controller.WorkflowLabelKey]
 		if !found || len(workflowName) == 0 {
-			errs = append(errs, fmt.Errorf("Unable to find workflow name for job: %s/%s", job.Namespace, job.Name))
+			errs = append(errs, fmt.Errorf("unable to find workflow name for job: %s/%s", job.Namespace, job.Name))
 			continue
 		}
 		if _, done := collected[path.Join(job.Namespace, workflowName)]; done {
@@ -68,24 +62,24 @@ func (c *GarbageCollector) CollectWorkflowJobs() error {
 		}
 		if _, err := c.WorkflowLister.Workflows(job.Namespace).Get(workflowName); err == nil || !apierrors.IsNotFound(err) {
 			if err != nil {
-				errs = append(errs, fmt.Errorf("Unexpected error retrieving workflow %s/%s cache: %v", job.Namespace, workflowName, err))
+				errs = append(errs, fmt.Errorf("unexpected error retrieving workflow %s/%s cache: %v", job.Namespace, workflowName, err))
 			}
 			continue
 		}
 		// Workflow couldn't be find in cache. Trying to get it via APIs.
 		if _, err := c.WorkflowClient.Workflow().Workflows(job.Namespace).Get(workflowName, metav1.GetOptions{}); err != nil {
 			if !apierrors.IsNotFound(err) {
-				errs = append(errs, fmt.Errorf("Unexpected error retrieving workflow %s/%s for job %s/%s: %v", job.Namespace, workflowName, job.Namespace, job.Name, err))
+				errs = append(errs, fmt.Errorf("unexpected error retrieving workflow %s/%s for job %s/%s: %v", job.Namespace, workflowName, job.Namespace, job.Name, err))
 				continue
 			}
 			// NotFound error: Hence remove all the jobs.
 			if err := c.KubeClient.Batch().Jobs(job.Namespace).DeleteCollection(controller.CascadeDeleteOptions(0), metav1.ListOptions{
 				LabelSelector: controller.WorkflowLabelKey + "=" + workflowName}); err != nil {
-				errs = append(errs, fmt.Errorf("Unable to delete Collection of jobs for workflow %s/%s", job.Namespace, workflowName))
+				errs = append(errs, fmt.Errorf("unable to delete Collection of jobs for workflow %s/%s", job.Namespace, workflowName))
 				continue
 			}
 			collected[path.Join(job.Namespace, workflowName)] = struct{}{} // inserted in the collected map
-			glog.Infof("Removed all jobs for workflow %s/%s", job.Namespace, workflowName)
+			glog.Infof("removed all jobs for workflow %s/%s", job.Namespace, workflowName)
 		}
 	}
 	return utilerrors.NewAggregate(errs)
