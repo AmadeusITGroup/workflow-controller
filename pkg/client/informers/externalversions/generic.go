@@ -23,8 +23,8 @@ package externalversions
 
 import (
 	"fmt"
-
 	v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow/v1"
+	daemonsetjob_v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/daemonsetjob/v1"
 	workflow_v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -59,6 +59,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=cronworkflow, Version=v1
 	case v1.SchemeGroupVersion.WithResource("cronworkflows"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Cronworkflow().V1().CronWorkflows().Informer()}, nil
+
+		// Group=daemonsetjob, Version=v1
+	case daemonsetjob_v1.SchemeGroupVersion.WithResource("daemonsetjobs"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Daemonsetjob().V1().DaemonSetJobs().Informer()}, nil
 
 		// Group=workflow, Version=v1
 	case workflow_v1.SchemeGroupVersion.WithResource("workflows"):

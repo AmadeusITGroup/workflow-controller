@@ -22,6 +22,8 @@ import (
 	clientset "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	cronworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/cronworkflow/v1"
 	fakecronworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/cronworkflow/v1/fake"
+	daemonsetjobv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/daemonsetjob/v1"
+	fakedaemonsetjobv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/daemonsetjob/v1/fake"
 	workflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/workflow/v1"
 	fakeworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/workflow/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -72,6 +74,16 @@ func (c *Clientset) CronworkflowV1() cronworkflowv1.CronworkflowV1Interface {
 // Cronworkflow retrieves the CronworkflowV1Client
 func (c *Clientset) Cronworkflow() cronworkflowv1.CronworkflowV1Interface {
 	return &fakecronworkflowv1.FakeCronworkflowV1{Fake: &c.Fake}
+}
+
+// DaemonsetjobV1 retrieves the DaemonsetjobV1Client
+func (c *Clientset) DaemonsetjobV1() daemonsetjobv1.DaemonsetjobV1Interface {
+	return &fakedaemonsetjobv1.FakeDaemonsetjobV1{Fake: &c.Fake}
+}
+
+// Daemonsetjob retrieves the DaemonsetjobV1Client
+func (c *Clientset) Daemonsetjob() daemonsetjobv1.DaemonsetjobV1Interface {
+	return &fakedaemonsetjobv1.FakeDaemonsetjobV1{Fake: &c.Fake}
 }
 
 // WorkflowV1 retrieves the WorkflowV1Client

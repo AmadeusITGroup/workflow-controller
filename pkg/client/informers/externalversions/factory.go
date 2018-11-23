@@ -22,18 +22,18 @@
 package externalversions
 
 import (
-	reflect "reflect"
-	sync "sync"
-	time "time"
-
 	versioned "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	cronworkflow "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/cronworkflow"
+	daemonsetjob "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/daemonsetjob"
 	internalinterfaces "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
 	workflow "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/workflow"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
+	reflect "reflect"
+	sync "sync"
+	time "time"
 )
 
 type sharedInformerFactory struct {
@@ -128,11 +128,16 @@ type SharedInformerFactory interface {
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
 	Cronworkflow() cronworkflow.Interface
+	Daemonsetjob() daemonsetjob.Interface
 	Workflow() workflow.Interface
 }
 
 func (f *sharedInformerFactory) Cronworkflow() cronworkflow.Interface {
 	return cronworkflow.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Daemonsetjob() daemonsetjob.Interface {
+	return daemonsetjob.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Workflow() workflow.Interface {

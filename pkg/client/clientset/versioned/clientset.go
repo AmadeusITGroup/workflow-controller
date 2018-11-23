@@ -20,6 +20,7 @@ package versioned
 
 import (
 	cronworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/cronworkflow/v1"
+	daemonsetjobv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/daemonsetjob/v1"
 	workflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned/typed/workflow/v1"
 	glog "github.com/golang/glog"
 	discovery "k8s.io/client-go/discovery"
@@ -32,6 +33,9 @@ type Interface interface {
 	CronworkflowV1() cronworkflowv1.CronworkflowV1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Cronworkflow() cronworkflowv1.CronworkflowV1Interface
+	DaemonsetjobV1() daemonsetjobv1.DaemonsetjobV1Interface
+	// Deprecated: please explicitly pick a version if possible.
+	Daemonsetjob() daemonsetjobv1.DaemonsetjobV1Interface
 	WorkflowV1() workflowv1.WorkflowV1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Workflow() workflowv1.WorkflowV1Interface
@@ -42,6 +46,7 @@ type Interface interface {
 type Clientset struct {
 	*discovery.DiscoveryClient
 	cronworkflowV1 *cronworkflowv1.CronworkflowV1Client
+	daemonsetjobV1 *daemonsetjobv1.DaemonsetjobV1Client
 	workflowV1     *workflowv1.WorkflowV1Client
 }
 
@@ -54,6 +59,17 @@ func (c *Clientset) CronworkflowV1() cronworkflowv1.CronworkflowV1Interface {
 // Please explicitly pick a version.
 func (c *Clientset) Cronworkflow() cronworkflowv1.CronworkflowV1Interface {
 	return c.cronworkflowV1
+}
+
+// DaemonsetjobV1 retrieves the DaemonsetjobV1Client
+func (c *Clientset) DaemonsetjobV1() daemonsetjobv1.DaemonsetjobV1Interface {
+	return c.daemonsetjobV1
+}
+
+// Deprecated: Daemonsetjob retrieves the default version of DaemonsetjobClient.
+// Please explicitly pick a version.
+func (c *Clientset) Daemonsetjob() daemonsetjobv1.DaemonsetjobV1Interface {
+	return c.daemonsetjobV1
 }
 
 // WorkflowV1 retrieves the WorkflowV1Client
@@ -87,6 +103,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
+	cs.daemonsetjobV1, err = daemonsetjobv1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 	cs.workflowV1, err = workflowv1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -105,6 +125,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
 	cs.cronworkflowV1 = cronworkflowv1.NewForConfigOrDie(c)
+	cs.daemonsetjobV1 = daemonsetjobv1.NewForConfigOrDie(c)
 	cs.workflowV1 = workflowv1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
@@ -115,6 +136,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.cronworkflowV1 = cronworkflowv1.New(c)
+	cs.daemonsetjobV1 = daemonsetjobv1.New(c)
 	cs.workflowV1 = workflowv1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)

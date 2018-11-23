@@ -20,6 +20,7 @@ package fake
 
 import (
 	cronworkflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow/v1"
+	daemonsetjobv1 "github.com/amadeusitgroup/workflow-controller/pkg/api/daemonsetjob/v1"
 	workflowv1 "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -52,6 +53,7 @@ func init() {
 // correctly.
 func AddToScheme(scheme *runtime.Scheme) {
 	cronworkflowv1.AddToScheme(scheme)
+	daemonsetjobv1.AddToScheme(scheme)
 	workflowv1.AddToScheme(scheme)
 
 }

@@ -22,10 +22,10 @@
 package v1
 
 import (
-	cronworkflow_v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/cronworkflow/v1"
+	daemonsetjob_v1 "github.com/amadeusitgroup/workflow-controller/pkg/api/daemonsetjob/v1"
 	versioned "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/cronworkflow/v1"
+	v1 "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/daemonsetjob/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -33,59 +33,59 @@ import (
 	time "time"
 )
 
-// CronWorkflowInformer provides access to a shared informer and lister for
-// CronWorkflows.
-type CronWorkflowInformer interface {
+// DaemonSetJobInformer provides access to a shared informer and lister for
+// DaemonSetJobs.
+type DaemonSetJobInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.CronWorkflowLister
+	Lister() v1.DaemonSetJobLister
 }
 
-type cronWorkflowInformer struct {
+type daemonSetJobInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewCronWorkflowInformer constructs a new informer for CronWorkflow type.
+// NewDaemonSetJobInformer constructs a new informer for DaemonSetJob type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewCronWorkflowInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredCronWorkflowInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewDaemonSetJobInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredDaemonSetJobInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredCronWorkflowInformer constructs a new informer for CronWorkflow type.
+// NewFilteredDaemonSetJobInformer constructs a new informer for DaemonSetJob type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredCronWorkflowInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredDaemonSetJobInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CronworkflowV1().CronWorkflows(namespace).List(options)
+				return client.DaemonsetjobV1().DaemonSetJobs(namespace).List(options)
 			},
 			WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CronworkflowV1().CronWorkflows(namespace).Watch(options)
+				return client.DaemonsetjobV1().DaemonSetJobs(namespace).Watch(options)
 			},
 		},
-		&cronworkflow_v1.CronWorkflow{},
+		&daemonsetjob_v1.DaemonSetJob{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *cronWorkflowInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredCronWorkflowInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *daemonSetJobInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredDaemonSetJobInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *cronWorkflowInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&cronworkflow_v1.CronWorkflow{}, f.defaultInformer)
+func (f *daemonSetJobInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&daemonsetjob_v1.DaemonSetJob{}, f.defaultInformer)
 }
 
-func (f *cronWorkflowInformer) Lister() v1.CronWorkflowLister {
-	return v1.NewCronWorkflowLister(f.Informer().GetIndexer())
+func (f *daemonSetJobInformer) Lister() v1.DaemonSetJobLister {
+	return v1.NewDaemonSetJobLister(f.Informer().GetIndexer())
 }
