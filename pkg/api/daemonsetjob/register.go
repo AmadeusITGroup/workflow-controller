@@ -15,5 +15,5 @@ package daemonsetjob
 
 const (
 	// GroupName is the API group for the daemonsetjob
-	GroupName = "daemonsetjob.k8s.io"
+	GroupName = "workflow.k8s.io"
 )

@@ -11,19 +11,23 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 
+	dapi "github.com/amadeusitgroup/workflow-controller/pkg/api/daemonsetjob/v1"
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 )
 
 // JobControlInterface defines interface to control Jobs life-cycle.
 // Interface is needed to mock it in unit tests
 type JobControlInterface interface {
-	// CreateJob
-	CreateJob(namespace string, template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, key string) (*batch.Job, error)
+	// CreateJobFromWorkflow
+	CreateJobFromWorkflow(namespace string, template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, key string) (*batch.Job, error)
+	// CreateJobFromDaemonSetJob
+	CreateJobFromDaemonSetJob(namespace string, template *batchv2.JobTemplateSpec, daemonsetjob *dapi.DaemonSetJob, nodeName string) (*batch.Job, error)
 	// DeleteJob
 	DeleteJob(namespace, name string, object runtime.Object) error
 }
@@ -36,9 +40,34 @@ type WorkflowJobControl struct {
 
 var _ JobControlInterface = &WorkflowJobControl{}
 
+// CreateJobFromWorkflow creates a Job According to a specific JobTemplateSpec
+func (w WorkflowJobControl) CreateJobFromWorkflow(namespace string, template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, stepName string) (*batch.Job, error) {
+	labels, err := getJobLabelsSetFromWorkflow(workflow, template, stepName)
+	if err != nil {
+		return nil, err
+	}
+	return w.CreateJob(namespace, stepName, &workflow.ObjectMeta, template, &labels)
+}
+
+// CreateJobFromDaemonSetJob creates a Job According to a specific JobTemplateSpec
+func (w WorkflowJobControl) CreateJobFromDaemonSetJob(namespace string, template *batchv2.JobTemplateSpec, daemonsetjob *dapi.DaemonSetJob, nodeName string) (*batch.Job, error) {
+	labels, err := getJobLabelsSetFromDaemonSetJob(daemonsetjob, template)
+	if err != nil {
+		return nil, err
+	}
+	templateCopy := template.DeepCopy()
+	templateCopy.Spec.Template.Spec.NodeName = nodeName
+	job, err := w.CreateJob(namespace, nodeName, &daemonsetjob.ObjectMeta, templateCopy, &labels)
+	if err != nil {
+		return nil, err
+	}
+
+	return job, nil
+}
+
 // CreateJob creates a Job According to a specific JobTemplateSpec
-func (w WorkflowJobControl) CreateJob(namespace string, template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, stepName string) (*batch.Job, error) {
-	job, err := initJob(template, workflow, stepName, nil)
+func (w WorkflowJobControl) CreateJob(namespace string, subName string, obj *metav1.ObjectMeta, template *batchv2.JobTemplateSpec, labelsset *labels.Set) (*batch.Job, error) {
+	job, err := initJob(template, obj, subName, labelsset, nil)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create job: %v", err)
 	}
@@ -62,25 +91,23 @@ func (w WorkflowJobControl) DeleteJob(namespace, jobName string, object runtime.
 	return nil
 }
 
-func initJob(template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, stepName string, owner *metav1.OwnerReference) (*batch.Job, error) {
-	desiredLabels, err := getJobLabelsSet(workflow, template, stepName)
+func initJob(template *batchv2.JobTemplateSpec, obj *metav1.ObjectMeta, subName string, labelsset *labels.Set, owner *metav1.OwnerReference) (*batch.Job, error) {
+	jobGeneratedName := fmt.Sprintf("wfl-%s-%s-", obj.Name, subName)
+	desiredAnnotations, err := getJobAnnotationsSet(obj, template)
+
 	if err != nil {
-		return nil, fmt.Errorf("unable to initialize Job for Workflow %s/%s step %s: %v", workflow.Namespace, workflow.Name, stepName, err)
+		return nil, fmt.Errorf("unable to initialize Job %s/%s: %v", obj.Namespace, subName, err)
 	}
-	desiredAnnotations, err := getJobAnnotationsSet(workflow, template)
-	if err != nil {
-		return nil, fmt.Errorf("unable to initialize Job for Workflow %s/%s step %s: %v", workflow.Namespace, workflow.Name, stepName, err)
-	}
-	jobGeneratedName := fmt.Sprintf("wfl-%s-%s-", workflow.Name, stepName)
+
 	job := &batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:       desiredLabels,
+			Labels:       *labelsset,
 			Annotations:  desiredAnnotations,
 			GenerateName: jobGeneratedName, // TODO: double check prefix
 		},
 	}
 
-	job.ObjectMeta.OwnerReferences = append(job.ObjectMeta.OwnerReferences, buildOwnerReference(workflow))
+	job.ObjectMeta.OwnerReferences = append(job.ObjectMeta.OwnerReferences, buildOwnerReference(obj))
 	job.Spec = *template.Spec.DeepCopy()
 	return job, nil
 }
@@ -89,8 +116,13 @@ func initJob(template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, stepNam
 type FakeJobControl struct {
 }
 
-// CreateJob mocks job creation
-func (f *FakeJobControl) CreateJob(namespace string, template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, key string) (*batch.Job, error) {
+// CreateJobFromWorkflow mocks job creation
+func (f *FakeJobControl) CreateJobFromWorkflow(namespace string, template *batchv2.JobTemplateSpec, workflow *wapi.Workflow, key string) (*batch.Job, error) {
+	return nil, nil
+}
+
+// CreateJobFromDaemonSetJob mocks job creation
+func (f *FakeJobControl) CreateJobFromDaemonSetJob(namespace string, template *batchv2.JobTemplateSpec, workflow *dapi.DaemonSetJob, nodeName string) (*batch.Job, error) {
 	return nil, nil
 }
 

@@ -84,8 +84,17 @@ type DaemonSetJobStatus struct {
 	// It is represented in RFC3339 form and is in UTC.
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 
-	// Statuses represent status of different steps
-	Statuses []DaemonSetJobNodeJobStatus `json:"statuses"`
+	// The number of actively running jobs.
+	// +optional
+	Active int32 `json:"active,omitempty" protobuf:"varint,4,opt,name=active"`
+
+	// The number of jobs which reached phase Succeeded.
+	// +optional
+	Succeeded int32 `json:"succeeded,omitempty" protobuf:"varint,5,opt,name=succeeded"`
+
+	// The number of jobs which reached phase Failed.
+	// +optional
+	Failed int32 `json:"failed,omitempty" protobuf:"varint,6,opt,name=failed"`
 }
 
 // DaemonSetJobNodeJobStatus contains necessary information for the step status

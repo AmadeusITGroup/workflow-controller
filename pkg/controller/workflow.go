@@ -8,13 +8,14 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/heptiolabs/healthcheck"
+
 	batch "k8s.io/api/batch/v1"
 	batchv2 "k8s.io/api/batch/v2alpha1"
 	apiv1 "k8s.io/api/core/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -36,8 +37,8 @@ import (
 
 // WorkflowControllerConfig contains info to customize Workflow controller behaviour
 type WorkflowControllerConfig struct {
-	RemoveIvalidWorkflow bool
-	NumberOfWorkers      int
+	RemoveInvalidWorkflow bool
+	NumberOfWorkers       int
 }
 
 // WorkflowStepLabelKey defines the key of label to be injected by workflow controller
@@ -93,8 +94,8 @@ func NewWorkflowController(
 
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "workflow"),
 		config: WorkflowControllerConfig{
-			RemoveIvalidWorkflow: true,
-			NumberOfWorkers:      1,
+			RemoveInvalidWorkflow: true,
+			NumberOfWorkers:       1,
 		},
 
 		Recorder: eventBroadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{Component: "workflow-controller"}),
@@ -119,6 +120,23 @@ func NewWorkflowController(
 	wc.syncHandler = wc.sync
 
 	return wc
+}
+
+// AddHealthCheck add Readiness and Liveness Checks to the handler
+func (w *WorkflowController) AddHealthCheck(h healthcheck.Handler) {
+	h.AddReadinessCheck("Workflow_cache_sync", func() error {
+		if w.WorkflowSynced() {
+			return nil
+		}
+		return fmt.Errorf("Workflow cache not sync")
+	})
+
+	h.AddReadinessCheck("Job_cache_sync", func() error {
+		if w.JobSynced() {
+			return nil
+		}
+		return fmt.Errorf("Job cache not sync")
+	})
 }
 
 // Run simply runs the controller. Assuming Informers are already running: via factories
@@ -214,7 +232,7 @@ func (w *WorkflowController) sync(key string) error {
 	// Validation. We always revalidate Workflow since any update must be re-checked.
 	if errs := wapi.ValidateWorkflow(sharedWorkflow); errs != nil && len(errs) > 0 {
 		glog.Errorf("WorkflowController.sync Worfklow %s/%s not valid: %v", namespace, name, errs)
-		if w.config.RemoveIvalidWorkflow {
+		if w.config.RemoveInvalidWorkflow {
 			glog.Errorf("Invalid workflow %s/%s is going to be removed", namespace, name)
 			if err := w.deleteWorkflow(namespace, name); err != nil {
 				glog.Errorf("unable to delete invalid workflow %s/%s: %v", namespace, name, err)
@@ -490,7 +508,7 @@ func (w *WorkflowController) manageWorkflowJobStep(workflow *wapi.Workflow, step
 	}
 	switch len(jobs) {
 	case 0: // create job
-		_, err := w.JobControl.CreateJob(workflow.Namespace, step.JobTemplate, workflow, stepName)
+		_, err := w.JobControl.CreateJobFromWorkflow(workflow.Namespace, step.JobTemplate, workflow, stepName)
 		if err != nil {
 			glog.Errorf("Couldn't create job: %v : %v", err, step.JobTemplate)
 			w.enqueue(workflow)
@@ -545,21 +563,7 @@ func (w *WorkflowController) retrieveJobsStep(workflow *wapi.Workflow, template 
 
 func (w *WorkflowController) deleteWorkflowJobs(workflow *wapi.Workflow) error {
 	glog.V(6).Infof("deleting all jobs for workflow %s/%s", workflow.Namespace, workflow.Name)
+
 	jobsSelector := inferrWorkflowLabelSelectorForJobs(workflow)
-	jobs, err := w.JobLister.Jobs(workflow.Namespace).List(jobsSelector)
-	if err != nil {
-		return fmt.Errorf("workflow %s/%s, unable to retrieve jobs to remove: %v", workflow.Namespace, workflow.Name, err)
-	}
-	errs := []error{}
-	for i := range jobs {
-		jobToBeRemoved := jobs[i].DeepCopy()
-		if IsJobFinished(jobToBeRemoved) { // don't remove already finished job
-			glog.V(4).Info("skipping job %s since finished", jobToBeRemoved.Name)
-			continue
-		}
-		if err := w.JobControl.DeleteJob(jobToBeRemoved.Namespace, jobToBeRemoved.Name, jobToBeRemoved); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return utilerrors.NewAggregate(errs)
+	return deleteJobsFromLabelSelector(workflow.Namespace, jobsSelector, w.JobLister, w.JobControl)
 }

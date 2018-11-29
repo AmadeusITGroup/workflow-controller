@@ -8,6 +8,8 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/heptiolabs/healthcheck"
+
 	apiv1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -77,6 +79,23 @@ func NewCronWorkflowController(
 	wc.syncHandler = wc.sync
 
 	return wc
+}
+
+// AddHealthCheck add Readiness and Liveness Checks to the handler
+func (w *CronWorkflowController) AddHealthCheck(h healthcheck.Handler) {
+	h.AddReadinessCheck("Workflow_cache_sync", func() error {
+		if w.WorkflowSynced() {
+			return nil
+		}
+		return fmt.Errorf("Workflow cache not sync")
+	})
+
+	h.AddReadinessCheck("CronWorkflow_cache_sync", func() error {
+		if w.CronWorkflowSynced() {
+			return nil
+		}
+		return fmt.Errorf("CronWorkflow cache not sync")
+	})
 }
 
 // Run simply runs the controller. Assuming Informers are already running: via factories
