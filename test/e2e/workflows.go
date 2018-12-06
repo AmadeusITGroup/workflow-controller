@@ -14,6 +14,7 @@ import (
 	wapi "github.com/amadeusitgroup/workflow-controller/pkg/api/workflow/v1"
 
 	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
+	"github.com/amadeusitgroup/workflow-controller/pkg/controller"
 	"github.com/amadeusitgroup/workflow-controller/test/e2e/framework"
 )
 
@@ -97,7 +98,7 @@ var _ = Describe("Workflow CRUD", func() {
 
 		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "60s", "5s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOChekcAllStepsFinished(workflowClient, myWorkflow, ns), "60s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCheckAllStepsFinished(workflowClient, myWorkflow, ns), "60s", "5s").ShouldNot(HaveOccurred())
 	})
 
 	It("should be able to update workflow", func() {
@@ -135,7 +136,7 @@ var _ = Describe("Workflow CRUD", func() {
 
 		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOChekcAllStepsFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCheckAllStepsFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 
 	})
 
@@ -227,7 +228,8 @@ var _ = Describe("Workflow Garbage Collection", func() {
 		Eventually(framework.HODeleteWorkflow(workflowClient, myWorkflow, ns), "40s", "1s").ShouldNot(HaveOccurred())
 
 		// Check all Jobs have been deleted
-		Eventually(framework.HONoJobsShouldRemains(kubeClient, ns), "90s", "5s").ShouldNot(HaveOccurred())
+		selector := controller.WorkflowLabelKey + "=workflow-long"
+		Eventually(framework.HONoJobsShouldRemains(kubeClient, selector, ns), "90s", "5s").ShouldNot(HaveOccurred())
 
 	})
 })
