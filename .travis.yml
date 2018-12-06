@@ -26,10 +26,19 @@ before_install:
 script:
 - ./hack/run-test-ci.sh
 stages:
+- name: docker-push
+  if: type NOT IN (pull_request)
 - name: release
   if: tag IS present
 jobs:
   include:
+  - stage: docker-push
+    name: docker-build
+    deploy:
+    - provider: script
+      script: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin && cd $TRAVIS_BUILD_DIR && make TAG=$TRAVIS_BRANCH push
+      on:
+        branch: master
   - stage: release
     script:
       - docker login -u "$DOCKER_USERNAME" p "$DOCKER_PASSWORD"

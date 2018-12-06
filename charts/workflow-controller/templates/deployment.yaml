@@ -25,18 +25,18 @@ spec:
           args: ["--v={{ .Values.logLevel }}"]
           resources:
 {{ toYaml .Values.resources | indent 12 }}
-    {{- if .Values.nodeSelector }}
-      livenessProbe:
-        httpGet:
-          path: /live
-          port: 8086
-        initialDelaySeconds: 5
-        periodSeconds: 5
-      readinessProbe:
-        httpGet:
-          path: /ready
-          port: 8086
-        periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 8086
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8086
+            periodSeconds: 5
+{{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
-    {{- end }}
+{{- end }}

@@ -27,15 +27,13 @@ $ kubectl create -f .../examples/hello_workflow/workflow.yaml
 
 At this point the workflow-controller will start to handle the jobs.
 
-
-### in a kubernetes pod
-
+### Simple deployment
 
 To run `workflow-controller` in a Kubernetes pod you should run this command
 
 ```shell
-$ kubectl create -f .../deployment/k8s/workflow-controller-rbac.yaml
-$ kubectl create -f .../deployment/k8s/workflow-controller-dpl.yaml
+$ kubectl create -f .../deployment/k8s/workflow-controller-rbac.yaml -n kube-system
+$ kubectl create -f .../deployment/k8s/workflow-controller-dpl.yaml -n kube-system
 ```
 
 Then you may want to test a workflow example like this:
@@ -44,8 +42,22 @@ Then you may want to test a workflow example like this:
 $ kubectl create -f  .../examples/hello_workflow/workflow.yaml
 ```
 
-### in an openshift cluster
-TODO
+## Helm deployment
+
+You can found in the `charts` folder the `workflow-controller` the helm chart for deploying the Kubernetes `workflow-controller` controller.
+
+```shell
+$ helm install --name wf charts/workflow-controller
+NAME:   wf
+LAST DEPLOYED: Tue Jan  9 23:41:13 2018
+NAMESPACE: default
+STATUS: DEPLOYED
+
+RESOURCES:
+==> v1beta1/Deployment
+NAME                    DESIRED  CURRENT  UP-TO-DATE  AVAILABLE  AGE
+wf-workflow-controller  1        1        1           0          0s
+```
 
 
 ### Developper
@@ -56,7 +68,7 @@ This project is using [goreleaser](https://goreleaser.com/) and an additional sc
 
 For starting the delivery, you need to clone this repository, then:
 
-```bash
+```shell
 zsh hack/release.sh <version> <remove-git>
 ```
 

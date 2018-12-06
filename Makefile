@@ -19,7 +19,6 @@ PLUGIN_PATH=./kubectl-plugin
 
 # 0.0 shouldn't clobber any released builds
 TAG= latest
-#PREFIX = gcr.io/google_containers/${ARTIFACT}
 PREFIX =  workflowcontroller/${ARTIFACT}
 
 SOURCES := $(shell find $(SOURCEDIR) ! -name "*_test.go" -name '*.go')
