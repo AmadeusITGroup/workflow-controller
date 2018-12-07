@@ -112,7 +112,7 @@ func HOIsDaemonSetJobStarted(workflowClient versioned.Interface, daemonsetjob *d
 	return func() error {
 		d, err := workflowClient.DaemonsetjobV1().DaemonSetJobs(daemonsetjob.Namespace).Get(daemonsetjob.Name, metav1.GetOptions{})
 		if err != nil {
-			Logf("Cannot list daemonsetjob:%v", err)
+			Logf("Cannot get daemonsetjob: %v", err)
 			return err
 		}
 		if d.Status.StartTime != nil {
@@ -122,6 +122,11 @@ func HOIsDaemonSetJobStarted(workflowClient versioned.Interface, daemonsetjob *d
 		Logf("DaemonSetJob %s/%s not updated", d.Namespace, d.Name)
 		return fmt.Errorf("daemonSetJob %s/%s not updated", d.Namespace, d.Name)
 	}
+}
+
+func displayJob(message string, job *batch.Job) error {
+	fmt.Printf("%s - Job: %#v\n", message, job.GetObjectMeta())
+	return nil
 }
 
 // HOIsDaemonSetJobJobsStarted is an higher order func that returns the func that checks whether Jobs linked to a DaemonSetJob are started
@@ -136,10 +141,12 @@ func HOIsDaemonSetJobJobsStarted(kubeclient clientset.Interface, daemonsetjob *d
 			return err
 		}
 		if len(jobs.Items) != 1 {
+			for i := range jobs.Items {
+				displayJob("multiple-jobs instead of 1", &jobs.Items[i])
+			}
 			return fmt.Errorf("Expected only 1 Job got %d, %s/%s: label selector: %q", len(jobs.Items), daemonsetjob.Namespace, daemonsetjob.Name, labelSelector)
 		}
 		if jobs.Items[0].Status.StartTime != nil {
-			Logf("Job started")
 			return nil
 		}
 		Logf("Job associated to %s/%s not created", daemonsetjob.Namespace, daemonsetjob.Name)

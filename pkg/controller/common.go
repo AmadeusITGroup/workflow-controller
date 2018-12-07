@@ -13,7 +13,7 @@ import (
 	batch "k8s.io/api/batch/v1"
 )
 
-func deleteJobsFromLabelSelector(namespace string, jobsSelector labels.Selector, lister batchv1listers.JobLister, controler JobControlInterface) error {
+func deleteJobsFromLabelSelector(namespace string, jobsSelector labels.Selector, lister batchv1listers.JobLister, jobControl JobControlInterface) error {
 	jobs, err := lister.Jobs(namespace).List(jobsSelector)
 	if err != nil {
 		return fmt.Errorf("unable to retrieve jobs to remove from labelSelector %s in namespace %s: %v", jobsSelector.String(), namespace, err)
@@ -25,7 +25,7 @@ func deleteJobsFromLabelSelector(namespace string, jobsSelector labels.Selector,
 			glog.V(4).Infof("skipping job %s since finished", jobToBeRemoved.Name)
 			continue
 		}
-		if err := controler.DeleteJob(jobToBeRemoved.Namespace, jobToBeRemoved.Name, jobToBeRemoved); err != nil {
+		if err := jobControl.DeleteJob(jobToBeRemoved.Namespace, jobToBeRemoved.Name, jobToBeRemoved); err != nil {
 			errs = append(errs, err)
 		}
 	}

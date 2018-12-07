@@ -36,13 +36,15 @@ func BuildAndSetClients() (versioned.Interface, *clientset.Clientset) {
 	kubeClient, err := f.kubeClient()
 	Ω(err).ShouldNot(HaveOccurred())
 	Ω(kubeClient).ShouldNot(BeNil())
-	Logf("Check wether Workflow resource is registered...")
+
 	client, err := f.client()
 	Ω(err).ShouldNot(HaveOccurred())
 	Ω(client).ShouldNot(BeNil())
+
 	return client, kubeClient
 }
 
+// NewWorkflowStep creates a step for a workflow
 func NewWorkflowStep(name string, dependencies []string) *wapi.WorkflowStep {
 	s := &wapi.WorkflowStep{
 		Name: name,
@@ -136,7 +138,7 @@ func NewWorkflow(group, version, name, namespace string, activeDeadlineSeconds *
 	}
 }
 
-// NewWorkflowWithLoop it creates an invalid (due to a loop in graph depencies) Workflow
+// NewWorkflowWithThreeSteps it creates a valid Workflow with three steps
 func NewWorkflowWithThreeSteps(group, version, name, namespace string) *wapi.Workflow {
 	w := NewWorkflow(group, version, name, namespace, nil)
 	step2 := NewWorkflowStep("two", []string{"one"})

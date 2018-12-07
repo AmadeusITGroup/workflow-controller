@@ -154,9 +154,9 @@ func (c *WorkflowController) Run() {
 		c.cronWorkflowInfomerFactory.Start(ctx.Done())
 		c.daemonSetJobInfomerFactory.Start(ctx.Done())
 		go c.daemonSetJobController.Run(ctx)
-		c.workflowController.Run(ctx)
-		//c.cronWorkflowController.Run(ctx)
-
+		go c.workflowController.Run(ctx)
+		go c.cronWorkflowController.Run(ctx)
+		<-ctx.Done()
 	}
 }
 
@@ -186,7 +186,6 @@ func (c *WorkflowController) runGCs(ctx context.Context) {
 }
 
 func (c *WorkflowController) runHTTPServer(ctx context.Context) error {
-
 	go func() {
 		glog.Infof("Listening on http://%s\n", c.httpServer.Addr)
 
@@ -194,7 +193,6 @@ func (c *WorkflowController) runHTTPServer(ctx context.Context) error {
 			glog.Error("Http server error: ", err)
 		}
 	}()
-
 	<-ctx.Done()
 	glog.Info("Shutting down the http server...")
 	return c.httpServer.Shutdown(context.Background())
