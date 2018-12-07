@@ -25,7 +25,7 @@ var FrameworkContext frameworkContextType
 
 // NewFramework creates and initializes the a Framework struct
 func NewFramework() (*Framework, error) {
-	Logf("KubeconfigPath-> %q", FrameworkContext.KubeConfigPath)
+	Logf("KubeconfigPath: %q", FrameworkContext.KubeConfigPath)
 	kubeConfig, err := clientcmd.BuildConfigFromFlags("", FrameworkContext.KubeConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve kubeConfig:%v", err)
@@ -42,7 +42,15 @@ func (f *Framework) kubeClient() (*clientset.Clientset, error) {
 func (f *Framework) client() (versioned.Interface, error) {
 	c, err := client.NewWorkflowClient(f.KubeConfig)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create workflow client:%v", err)
+		return nil, fmt.Errorf("unable to create workflow client: %v", err)
+	}
+	return c, err
+}
+
+func (f *Framework) cronWorkflowClient() (versioned.Interface, error) {
+	c, err := client.NewCronWorkflowClient(f.KubeConfig)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create cronWorkflow client: %v", err)
 	}
 	return c, err
 }

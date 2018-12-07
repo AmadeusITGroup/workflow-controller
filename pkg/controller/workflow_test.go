@@ -21,6 +21,7 @@ import (
 	wclient "github.com/amadeusitgroup/workflow-controller/pkg/client"
 	"github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
 	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
+	utiltesting "github.com/amadeusitgroup/workflow-controller/pkg/util/testing"
 )
 
 // utility function to create a basic Workflow with steps
@@ -48,7 +49,7 @@ func newWorkflow(count int32, startTime *metav1.Time) *wapi.Workflow {
 	workflow.Spec.Steps = make([]wapi.WorkflowStep, count)
 	for i := range workflow.Spec.Steps {
 		workflow.Spec.Steps[i].Name = fmt.Sprintf("step-%v", i)
-		workflow.Spec.Steps[i].JobTemplate = newJobTemplateSpec()
+		workflow.Spec.Steps[i].JobTemplate = utiltesting.ValidFakeTemplateSpec()
 	}
 	return &workflow
 }

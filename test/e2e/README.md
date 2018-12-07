@@ -10,4 +10,8 @@ which will compile the `e2e.test` executable in your current directory. Then
 
 ```
 
-will start the e2e test....
+will start the e2e test. Usual `ginkgo` features are preserved, so if you want to run only the `CronWorkflow CRUD` tests you may want to run something like:
+
+```shell
+$./e2e.test --ginkgo.v=true --ginkgo.focus="CronWorkflow CRUD" --kubeconfig=$HOME/.kube/config
+```

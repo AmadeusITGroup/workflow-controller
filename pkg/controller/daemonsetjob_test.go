@@ -7,13 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/amadeusitgroup/workflow-controller/pkg/api/daemonsetjob"
-	dapi "github.com/amadeusitgroup/workflow-controller/pkg/api/daemonsetjob/v1"
-	wclient "github.com/amadeusitgroup/workflow-controller/pkg/client"
-	dclientset "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
-	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
-	dlisters "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/daemonsetjob/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -28,6 +21,14 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+
+	"github.com/amadeusitgroup/workflow-controller/pkg/api/daemonsetjob"
+	dapi "github.com/amadeusitgroup/workflow-controller/pkg/api/daemonsetjob/v1"
+	wclient "github.com/amadeusitgroup/workflow-controller/pkg/client"
+	dclientset "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
+	winformers "github.com/amadeusitgroup/workflow-controller/pkg/client/informers/externalversions"
+	dlisters "github.com/amadeusitgroup/workflow-controller/pkg/client/listers/daemonsetjob/v1"
+	utiltesting "github.com/amadeusitgroup/workflow-controller/pkg/util/testing"
 )
 
 func TestDaemonSetJobController_Run(t *testing.T) {
@@ -634,7 +635,7 @@ func newDaemonSetJob(startTime *metav1.Time, nodeSelector *metav1.LabelSelector,
 				},
 			},
 			NodeSelector: nodeSelector,
-			JobTemplate:  newJobTemplateSpec(),
+			JobTemplate:  utiltesting.ValidFakeTemplateSpec(),
 		},
 		Status: dapi.DaemonSetJobStatus{
 			StartTime: startTime,
