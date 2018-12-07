@@ -7,7 +7,7 @@ apiGroupName: workflow.k8s.io
 image:
   registry: ""
   pullPolicy: IfNotPresent
-  account: "workflowcontroller"
+  account: "workflowctrl"
   tag: master
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious

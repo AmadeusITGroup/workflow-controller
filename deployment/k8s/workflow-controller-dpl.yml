@@ -15,7 +15,7 @@ spec:
       serviceAccount: workflow-controller
       containers:
       - name: workflow-controller
-        image: amadeusitgroup/workflow-controller:latest
+        image: workflowctrl/workflow-controller:latest
         imagePullPolicy: Always
         args: ["--v=2"]
         livenessProbe:
