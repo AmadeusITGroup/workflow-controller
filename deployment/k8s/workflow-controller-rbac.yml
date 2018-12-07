@@ -8,9 +8,11 @@ rules:
   resources:
   - customresourcedefinitions
   verbs: ["*"]
-- apiGroups: ["dag.example.com"]
+- apiGroups: ["workflow.k8s.io"]
   resources:
   - workflows
+  - cronworkflows
+  - daemonsetjobs
   verbs: ["*"]
 - apiGroups: ["batch"]
   resources:
