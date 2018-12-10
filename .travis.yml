@@ -27,7 +27,7 @@ script:
 - ./hack/run-test-ci.sh
 stages:
 - name: docker-push
-  if: type NOT IN (push, pull_request)
+  if: type NOT IN (pull_request)
 - name: release
   if: tag IS present
 jobs:
