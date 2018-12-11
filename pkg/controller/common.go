@@ -9,6 +9,8 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	batchv1listers "k8s.io/client-go/listers/batch/v1"
+
+	batch "k8s.io/api/batch/v1"
 )
 
 func deleteJobsFromLabelSelector(namespace string, jobsSelector labels.Selector, lister batchv1listers.JobLister, controler JobControlInterface) error {
@@ -28,4 +30,11 @@ func deleteJobsFromLabelSelector(namespace string, jobsSelector labels.Selector,
 		}
 	}
 	return utilerrors.NewAggregate(errs)
+}
+
+func compareJobSpecMD5Hash(hash string, job *batch.Job) bool {
+	if val, ok := job.Annotations[DaemonSetJobMD5AnnotationKey]; ok && val == hash {
+		return true
+	}
+	return false
 }

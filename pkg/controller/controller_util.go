@@ -89,7 +89,7 @@ func getJobLabelsSetFromDaemonSetJob(daemonsetjob *dapi.DaemonSetJob, template *
 	// Job should also get template.metadata.labels for monitoring metrics.
 	// These would ordinarily only be applied to the Pod running the Job,
 	// but the CronJob controller does apply them to its Job.
-	for k, v := range template.Spec.Template.ObjectMeta.Labels {
+	for k, v := range template.ObjectMeta.Labels {
 		desiredLabels[k] = v
 	}
 	desiredLabels[DaemonSetJobLabelKey] = daemonsetjob.Name // add daemonsetjob name to the job  labels

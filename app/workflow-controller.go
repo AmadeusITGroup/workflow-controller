@@ -129,7 +129,7 @@ func NewWorkflowControllerApp(c *Config) *WorkflowController {
 	// configure readiness and liveness probes
 	health := healthcheck.NewHandler()
 	workflowCtrl.AddHealthCheck(health)
-	cronWorkflowCtrl.AddHealthCheck(health)
+	//cronWorkflowCtrl.AddHealthCheck(health)
 	daemonSetJobCtrl.AddHealthCheck(health)
 
 	return &WorkflowController{

@@ -1,7 +1,12 @@
 package controller
 
 import (
+	"bytes"
+	"crypto/md5"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/golang/glog"
 
@@ -57,7 +62,19 @@ func (w WorkflowJobControl) CreateJobFromDaemonSetJob(namespace string, template
 	}
 	templateCopy := template.DeepCopy()
 	templateCopy.Spec.Template.Spec.NodeName = nodeName
-	job, err := w.CreateJob(namespace, nodeName, &daemonsetjob.ObjectMeta, templateCopy, &labels)
+
+	// Generate a MD5 representing the JobTemplateSpec send
+	hash, err := generateMD5JobSpec(&daemonsetjob.Spec.JobTemplate.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("unable to generates the JobSpec MD5, %v", err)
+	}
+	objMeta := daemonsetjob.ObjectMeta.DeepCopy()
+	if objMeta.Annotations == nil {
+		objMeta.Annotations = map[string]string{}
+	}
+	objMeta.Annotations[DaemonSetJobMD5AnnotationKey] = hash
+
+	job, err := w.CreateJob(namespace, nodeName, objMeta, templateCopy, &labels)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +111,6 @@ func (w WorkflowJobControl) DeleteJob(namespace, jobName string, object runtime.
 func initJob(template *batchv2.JobTemplateSpec, obj *metav1.ObjectMeta, subName string, labelsset *labels.Set, owner *metav1.OwnerReference) (*batch.Job, error) {
 	jobGeneratedName := fmt.Sprintf("wfl-%s-%s-", obj.Name, subName)
 	desiredAnnotations, err := getJobAnnotationsSet(obj, template)
-
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize Job %s/%s: %v", obj.Namespace, subName, err)
 	}
@@ -109,6 +125,7 @@ func initJob(template *batchv2.JobTemplateSpec, obj *metav1.ObjectMeta, subName 
 
 	job.ObjectMeta.OwnerReferences = append(job.ObjectMeta.OwnerReferences, buildOwnerReference(obj))
 	job.Spec = *template.Spec.DeepCopy()
+
 	return job, nil
 }
 
@@ -129,4 +146,15 @@ func (f *FakeJobControl) CreateJobFromDaemonSetJob(namespace string, template *b
 // DeleteJob mocks job deletion
 func (f *FakeJobControl) DeleteJob(namespace, name string, object runtime.Object) error {
 	return nil
+}
+
+// generateMD5JobSpec used to generate the PodSpec MD5 hash
+func generateMD5JobSpec(spec *batch.JobSpec) (string, error) {
+	b, err := json.Marshal(spec)
+	if err != nil {
+		return "", err
+	}
+	hash := md5.New()
+	io.Copy(hash, bytes.NewReader(b))
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
