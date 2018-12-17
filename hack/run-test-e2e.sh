@@ -30,4 +30,4 @@ popd
 #  - check if kubeconfig is there
 #  - check if cluster is up
 
-./test/e2e/e2e.test --kubeconfig=$HOME/.kube/config
+./test/e2e/e2e.test --kubeconfig=$HOME/.kube/config --ginkgo.slowSpecThreshold 60

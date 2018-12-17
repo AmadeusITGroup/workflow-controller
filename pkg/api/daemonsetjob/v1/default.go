@@ -25,6 +25,5 @@ func DefaultDaemonSetJob(undefaultedDaemonSetJob *DaemonSetJob) *DaemonSetJob {
 	}
 	common.SetDefaults_Job(dummyJob)
 	d.Spec.JobTemplate.Spec = dummyJob.Spec
-
 	return d
 }

@@ -43,7 +43,8 @@ type DaemonSetJobControllerConfig struct {
 
 // DaemonSetJobLabelKey defines the key of label to be injected by DaemonSetJob controller
 const (
-	DaemonSetJobLabelKey = "kubernetes.io/DaemonSetJob"
+	DaemonSetJobLabelKey         = "kubernetes.io/DaemonSetJob"
+	DaemonSetJobMD5AnnotationKey = "workflow.k8s.io/jobspec-md5"
 )
 
 // DaemonSetJobController represents the DaemonSetJob controller
@@ -288,6 +289,11 @@ func (d *DaemonSetJobController) manageDaemonSetJob(daemonsetjob *dapi.DaemonSet
 	daemonsetjobComplete := false
 	daemonsetjobFailed := false
 
+	md5JobSpec, err := generateMD5JobSpec(&daemonsetjob.Spec.JobTemplate.Spec)
+	if err != nil {
+		return fmt.Errorf("unable to generates the JobSpec MD5, %v", err)
+	}
+
 	jobSelector := labels.Set{DaemonSetJobLabelKey: daemonsetjob.Name}
 	jobs, err := d.JobLister.List(jobSelector.AsSelectorPreValidated())
 	jobsByNodeName := make(map[string]*batch.Job)
@@ -306,20 +312,40 @@ func (d *DaemonSetJobController) manageDaemonSetJob(daemonsetjob *dapi.DaemonSet
 	}
 	errs := []error{}
 	allJobs := []*batch.Job{}
+	jobToDelete := []*batch.Job{} // corresponding to the all DaemonSetJob Spec
 	for _, node := range nodes {
+		newJobCreation := false
 		job, ok := jobsByNodeName[node.Name]
 		if !ok {
+			glog.V(6).Infof("Job for the node %s not found %s/%s", node.Name, daemonsetjob.Namespace, daemonsetjob.Name)
+			newJobCreation = true
+		} else if job != nil {
+			if !compareJobSpecMD5Hash(md5JobSpec, job) {
+				glog.V(6).Infof("JobTemplateSpec has changed, %s/%s, previousMD5:%s, current:%s", job.Namespace, job.Name, md5JobSpec, job.GetAnnotations()[DaemonSetJobMD5AnnotationKey])
+				jobToDelete = append(jobToDelete, job)
+				newJobCreation = true
+			} else {
+				allJobs = append(allJobs, job)
+			}
+		}
+
+		if newJobCreation {
 			job, err = d.JobControl.CreateJobFromDaemonSetJob(daemonsetjob.Namespace, daemonsetjob.Spec.JobTemplate, daemonsetjob, node.Name)
 			if err != nil {
 				errs = append(errs, err)
 			}
 			daemonsetjobToBeUpdated = true
 		}
+	}
 
-		if job != nil {
-			allJobs = append(allJobs, job)
+	// Delete old jobs
+	for _, job := range jobToDelete {
+		// TODO maybe wait that the job is finished (success or failure) before deleting, need to define policy configuration
+		// Or maybe wait that the job is finished before creating the new job
+		err = d.JobControl.DeleteJob(job.Namespace, job.Name, job)
+		if err != nil {
+			errs = append(errs, err)
 		}
-
 	}
 
 	// build status
@@ -337,7 +363,6 @@ func (d *DaemonSetJobController) manageDaemonSetJob(daemonsetjob *dapi.DaemonSet
 		daemonsetjob.Status.Failed = failedJobs
 		daemonsetjobToBeUpdated = true
 	}
-
 	updateDaemonSetJobStatusConditions(&daemonsetjob.Status, now, daemonsetjobComplete, daemonsetjobFailed)
 	if daemonsetjobComplete {
 		glog.Infof("Workflow %s/%s complete.", daemonsetjob.Namespace, daemonsetjob.Name)
@@ -541,6 +566,13 @@ func IsDaemonSetJobFinished(d *dapi.DaemonSetJob) bool {
 	return false
 }
 
+// InferDaemonSetJobLabelSelectorForJobs returns labels.Selector corresponding to the associated Jobs
+func InferDaemonSetJobLabelSelectorForJobs(daemonsetjob *dapi.DaemonSetJob) labels.Selector {
+	set := fetchLabelsSetFromLabelSelector(daemonsetjob.Spec.Selector)
+	set[DaemonSetJobLabelKey] = daemonsetjob.Name
+	return labels.SelectorFromSet(set)
+}
+
 // get daemonsetjob by key method
 func (d *DaemonSetJobController) getDaemonSetJobByKey(key string) (*dapi.DaemonSetJob, error) {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
@@ -590,7 +622,7 @@ func (d *DaemonSetJobController) pastActiveDeadline(daemonsetjob *dapi.DaemonSet
 func (d *DaemonSetJobController) deleteDaemonSetJobJobs(daemonsetjob *dapi.DaemonSetJob) error {
 	glog.V(6).Infof("deleting all jobs for daemonsetjob %s/%s", daemonsetjob.Namespace, daemonsetjob.Name)
 
-	jobsSelector := inferDaemonSetJobLabelSelectorForJobs(daemonsetjob)
+	jobsSelector := InferDaemonSetJobLabelSelectorForJobs(daemonsetjob)
 	return deleteJobsFromLabelSelector(daemonsetjob.Namespace, jobsSelector, d.JobLister, d.JobControl)
 }
 
@@ -655,10 +687,4 @@ func newDaemonSetJobStatusCondition(conditionType dapi.DaemonSetJobConditionType
 		Reason:             reason,
 		Message:            message,
 	}
-}
-
-func inferDaemonSetJobLabelSelectorForJobs(daemonsetjob *dapi.DaemonSetJob) labels.Selector {
-	set := fetchLabelsSetFromLabelSelector(daemonsetjob.Spec.Selector)
-	set[DaemonSetJobLabelKey] = daemonsetjob.Name
-	return labels.SelectorFromSet(set)
 }
