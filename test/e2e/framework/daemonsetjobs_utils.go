@@ -137,7 +137,7 @@ func HOIsDaemonSetJobStarted(workflowClient versioned.Interface, daemonsetjob *d
 func HOIsDaemonSetJobJobsStarted(kubeclient clientset.Interface, daemonsetjob *daemonsetjobv1.DaemonSetJob) func() error {
 	return func() error {
 		jobs, err := kubeclient.BatchV1().Jobs(daemonsetjob.Namespace).List(metav1.ListOptions{
-			LabelSelector: labels.Set(daemonsetjob.Spec.JobTemplate.Labels).AsSelector().String(),
+			LabelSelector: labels.Set(daemonsetjob.Labels).AsSelector().String(),
 		})
 		if err != nil {
 			Logf("Cannot list jobs:%v", err)
