@@ -219,7 +219,7 @@ func (d *DaemonSetJobController) sync(key string) error {
 	var sharedDaemonSetJob *dapi.DaemonSetJob
 	var err error
 	if sharedDaemonSetJob, err = d.getDaemonSetJobByKey(key); err != nil {
-		glog.Errorf("unable to get Workflow %s: %v. Maybe deleted", key, err)
+		glog.V(4).Infof("unable to get Workflow %s: %v. Maybe deleted", key, err)
 		return nil
 	}
 	namespace := sharedDaemonSetJob.Namespace
@@ -582,7 +582,7 @@ func (d *DaemonSetJobController) getDaemonSetJobByKey(key string) (*dapi.DaemonS
 	glog.V(6).Infof("Syncing %s/%s", namespace, name)
 	daemonsetJob, err := d.DaemonSetJobLister.DaemonSetJobs(namespace).Get(name)
 	if err != nil {
-		glog.Errorf("unable to get DaemonSetJob %s/%s: %v. Maybe deleted", namespace, name, err)
+		glog.V(4).Infof("unable to get DaemonSetJob %s/%s: %v. Maybe deleted", namespace, name, err)
 		return nil, err
 	}
 	return daemonsetJob, nil
