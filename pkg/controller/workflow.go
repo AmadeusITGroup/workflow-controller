@@ -197,7 +197,7 @@ func (w *WorkflowController) getWorkflowByKey(key string) (*wapi.Workflow, error
 	glog.V(6).Infof("Syncing %s/%s", namespace, name)
 	workflow, err := w.WorkflowLister.Workflows(namespace).Get(name)
 	if err != nil {
-		glog.Errorf("unable to get Workflow %s/%s: %v. Maybe deleted", namespace, name, err)
+		glog.V(4).Infof("unable to get Workflow %s/%s: %v. Maybe deleted", namespace, name, err)
 		return nil, err
 	}
 	return workflow, nil
@@ -213,7 +213,7 @@ func (w *WorkflowController) sync(key string) error {
 	var sharedWorkflow *wapi.Workflow
 	var err error
 	if sharedWorkflow, err = w.getWorkflowByKey(key); err != nil {
-		glog.Errorf("unable to get Workflow %s: %v. Maybe deleted", key, err)
+		glog.V(4).Infof("unable to get Workflow %s: %v. Maybe deleted", key, err)
 		return nil
 	}
 	namespace := sharedWorkflow.Namespace

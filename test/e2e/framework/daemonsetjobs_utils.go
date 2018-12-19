@@ -116,20 +116,17 @@ func HOUpdateDaemonSetJob(workflowClient versioned.Interface, daemonsetjob *daem
 // HOIsDaemonSetJobStarted is an higher order func that returns the func that checks whether DaemonSetJob is started
 func HOIsDaemonSetJobStarted(workflowClient versioned.Interface, daemonsetjob *daemonsetjobv1.DaemonSetJob) func() error {
 	return func() error {
-		daemonSetJobs, err := workflowClient.DaemonsetjobV1().DaemonSetJobs(daemonsetjob.Namespace).List(metav1.ListOptions{})
+		d, err := workflowClient.DaemonsetjobV1().DaemonSetJobs(daemonsetjob.Namespace).Get(daemonsetjob.Name, metav1.GetOptions{})
 		if err != nil {
 			Logf("Cannot list daemonsetjob:%v", err)
 			return err
 		}
-		if len(daemonSetJobs.Items) != 1 {
-			return fmt.Errorf("Expected only 1 DaemonSetJob got %d, %s/%s", len(daemonSetJobs.Items), daemonsetjob.Namespace, daemonsetjob.Name)
-		}
-		if daemonSetJobs.Items[0].Status.StartTime != nil {
+		if d.Status.StartTime != nil {
 			Logf("DaemonSetJob started")
 			return nil
 		}
-		Logf("DaemonSetJob %s not updated", daemonsetjob.Name)
-		return fmt.Errorf("daemonSetJob %s not updated", daemonsetjob.Name)
+		Logf("DaemonSetJob %s/%s not updated", d.Namespace, d.Name)
+		return fmt.Errorf("daemonSetJob %s/%s not updated", d.Namespace, d.Name)
 	}
 }
 
@@ -144,34 +141,31 @@ func HOIsDaemonSetJobJobsStarted(kubeclient clientset.Interface, daemonsetjob *d
 			return err
 		}
 		if len(jobs.Items) != 1 {
-			return fmt.Errorf("Expected only 1 Job got %d, %s/%s", len(jobs.Items), daemonsetjob.Namespace, daemonsetjob.Name)
+			return fmt.Errorf("Expected only 1 Job got %d, %s/%s: label selector: %s", len(jobs.Items), daemonsetjob.Namespace, daemonsetjob.Name, labels.Set(daemonsetjob.Labels).AsSelector().String())
 		}
 		if jobs.Items[0].Status.StartTime != nil {
 			Logf("Job started")
 			return nil
 		}
-		Logf("Job associated to %s not created", daemonsetjob.Name)
-		return fmt.Errorf("Job associated to %s not created", daemonsetjob.Name)
+		Logf("Job associated to %s/%s not created", daemonsetjob.Name)
+		return fmt.Errorf("Job associated to %s/%s not created", daemonsetjob.Namespace, daemonsetjob.Name)
 	}
 }
 
 // HOIsDaemonSetJobFinished is an higher order func that returns the func that checks whether a Workflow is finished
 func HOIsDaemonSetJobFinished(workflowClient versioned.Interface, daemonsetjob *daemonsetjobv1.DaemonSetJob) func() error {
 	return func() error {
-		daemonSetJobs, err := workflowClient.DaemonsetjobV1().DaemonSetJobs(daemonsetjob.Namespace).List(metav1.ListOptions{})
+		d, err := workflowClient.DaemonsetjobV1().DaemonSetJobs(daemonsetjob.Namespace).Get(daemonsetjob.Name, metav1.GetOptions{})
 		if err != nil {
-			Logf("Cannot list DaemonSetJobs:%v", err)
+			Logf("Cannot get DaemonSetJobs %s:%v", daemonsetjob.Name, err)
 			return err
 		}
-		if len(daemonSetJobs.Items) != 1 {
-			return fmt.Errorf("Expected only 1 daemonSetJobs got %d", len(daemonSetJobs.Items))
-		}
-		if controller.IsDaemonSetJobFinished(&daemonSetJobs.Items[0]) {
-			Logf("DaemonSetJob %s finished", daemonsetjob.Name)
+		if controller.IsDaemonSetJobFinished(d) {
+			Logf("DaemonSetJob %s/%s finished", d.Namespace, d.Name)
 			return nil
 		}
-		Logf("DaemonSetJob %s not finished", daemonsetjob.Name)
-		return fmt.Errorf("daemonsetjob %s not finished", daemonsetjob.Name)
+		Logf("DaemonSetJob %s/%s not finished", d.Namespace, d.Name)
+		return fmt.Errorf("daemonsetjob %s/%s not finished", d.Namespace, d.Name)
 	}
 }
 

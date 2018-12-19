@@ -161,41 +161,34 @@ func HOCreateWorkflow(workflowClient versioned.Interface, workflow *wapi.Workflo
 // HOIsWorkflowStarted is an higher order func that returns the func that checks whether Workflow is started
 func HOIsWorkflowStarted(workflowClient versioned.Interface, workflow *wapi.Workflow, namespace string) func() error {
 	return func() error {
-		//workflows := wapi.WorkflowList{}
-		workflows, err := workflowClient.WorkflowV1().Workflows(workflow.Namespace).List(metav1.ListOptions{})
+		w, err := workflowClient.WorkflowV1().Workflows(workflow.Namespace).Get(workflow.Name, metav1.GetOptions{})
 		if err != nil {
-			Logf("Cannot list workflows:%v", err)
+			Logf("Cannot find workflow %s:%v", workflow.Name, err)
 			return err
 		}
-		if len(workflows.Items) != 1 {
-			return fmt.Errorf("Expected only 1 workflows got %d", len(workflows.Items))
-		}
-		if workflows.Items[0].Status.StartTime != nil {
+		if w.Status.StartTime != nil {
 			Logf("Workflow started")
 			return nil
 		}
-		Logf("Workflow %s not updated", workflow.Name)
-		return fmt.Errorf("workflow %s not updated", workflow.Name)
+		Logf("Workflow %s/%s not updated", w.Namespace, w.Name)
+		return fmt.Errorf("workflow %s not updated", w.Namespace, w.Name)
 	}
 }
 
 // HOIsWorkflowFinished is an higher order func that returns the func that checks whether a Workflow is finished
 func HOIsWorkflowFinished(workflowClient versioned.Interface, workflow *wapi.Workflow, namespace string) func() error {
 	return func() error {
-		workflows, err := workflowClient.WorkflowV1().Workflows(workflow.Namespace).List(metav1.ListOptions{})
+		w, err := workflowClient.WorkflowV1().Workflows(workflow.Namespace).Get(workflow.Name, metav1.GetOptions{})
 		if err != nil {
-			Logf("Cannot list workflows:%v", err)
+			Logf("Cannot find workflow %s:%v", workflow.Name, err)
 			return err
 		}
-		if len(workflows.Items) != 1 {
-			return fmt.Errorf("Expected only 1 workflows got %d", len(workflows.Items))
-		}
-		if controller.IsWorkflowFinished(&workflows.Items[0]) {
-			Logf("Workflow %s finished", workflow.Name)
+		if controller.IsWorkflowFinished(w) {
+			Logf("Workflow %s/%s finished", w.Namespace, w.Name)
 			return nil
 		}
-		Logf("Workflow %s not finished", workflow.Name)
-		return fmt.Errorf("workflow %s not finished", workflow.Name)
+		Logf("Workflow %s not finished", w.Name)
+		return fmt.Errorf("workflow %s/%s not finished", w.Namespace, w.Name)
 	}
 }
 
@@ -244,7 +237,7 @@ func HOCheckAllStepsFinished(workflowClient versioned.Interface, workflow *wapi.
 	return func() error {
 		w, err := workflowClient.WorkflowV1().Workflows(namespace).Get(workflow.Name, metav1.GetOptions{})
 		if err != nil {
-			return fmt.Errorf("unable to get %s/%s:%v", w.Namespace, w.Name, err)
+			return fmt.Errorf("unable to get %s:%v", workflow.Name, err)
 		}
 		if len(w.Status.Statuses) == 0 {
 			return fmt.Errorf("workflow %s/%s not fully completed", w.Namespace, w.Name)
