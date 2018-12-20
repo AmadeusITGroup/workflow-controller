@@ -294,11 +294,25 @@ func (d *DaemonSetJobController) manageDaemonSetJob(daemonsetjob *dapi.DaemonSet
 		return fmt.Errorf("unable to generates the JobSpec MD5, %v", err)
 	}
 
+	errs := []error{}
 	jobSelector := labels.Set{DaemonSetJobLabelKey: daemonsetjob.Name}
 	jobs, err := d.JobLister.List(jobSelector.AsSelectorPreValidated())
 	jobsByNodeName := make(map[string]*batch.Job)
+	jobsToBeDeleted := []*batch.Job{}
 	for _, job := range jobs {
-		jobsByNodeName[job.Spec.Template.Spec.NodeName] = job
+		if _, ok := jobsByNodeName[job.Spec.Template.Spec.NodeName]; ok {
+			// a job is already associated with this node, we should delete the other one.
+			jobsToBeDeleted = append(jobsToBeDeleted, job)
+		} else {
+			jobsByNodeName[job.Spec.Template.Spec.NodeName] = job
+		}
+	}
+
+	for _, job := range jobsToBeDeleted {
+		err = d.JobControl.DeleteJob(job.Namespace, job.Name, job)
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	nodeSelector := labels.Set{}
@@ -310,38 +324,45 @@ func (d *DaemonSetJobController) manageDaemonSetJob(daemonsetjob *dapi.DaemonSet
 	if err != nil {
 		return err
 	}
-	errs := []error{}
+
 	allJobs := []*batch.Job{}
-	jobToDelete := []*batch.Job{} // corresponding to the all DaemonSetJob Spec
 	for _, node := range nodes {
-		newJobCreation := false
 		job, ok := jobsByNodeName[node.Name]
 		if !ok {
 			glog.V(6).Infof("Job for the node %s not found %s/%s", node.Name, daemonsetjob.Namespace, daemonsetjob.Name)
-			newJobCreation = true
-		} else if job != nil {
-			if !compareJobSpecMD5Hash(md5JobSpec, job) {
-				glog.V(6).Infof("JobTemplateSpec has changed, %s/%s, previousMD5:%s, current:%s", job.Namespace, job.Name, md5JobSpec, job.GetAnnotations()[DaemonSetJobMD5AnnotationKey])
-				jobToDelete = append(jobToDelete, job)
-				newJobCreation = true
-			} else {
-				allJobs = append(allJobs, job)
-			}
-		}
-
-		if newJobCreation {
 			job, err = d.JobControl.CreateJobFromDaemonSetJob(daemonsetjob.Namespace, daemonsetjob.Spec.JobTemplate, daemonsetjob, node.Name)
 			if err != nil {
 				errs = append(errs, err)
 			}
 			daemonsetjobToBeUpdated = true
+		} else if job != nil {
+			if !compareJobSpecMD5Hash(md5JobSpec, job) {
+				glog.V(6).Infof("JobTemplateSpec has changed, %s/%s, previousMD5:%s, current:%s", job.Namespace, job.Name, md5JobSpec, job.GetAnnotations()[DaemonSetJobMD5AnnotationKey])
+				switch getJobStatus(job) {
+				case failedJobStatus:
+				case succeededJobStatus:
+					err = d.JobControl.DeleteJob(job.Namespace, job.Name, job)
+					if err != nil {
+						errs = append(errs, err)
+					}
+				case activeJobStatus:
+					job, err = d.JobControl.UpdateJobFromDaemonSetJob(job, daemonsetjob.Spec.JobTemplate, daemonsetjob, node.Name)
+					if err != nil {
+						errs = append(errs, err)
+					}
+				}
+				daemonsetjobToBeUpdated = true
+			} else {
+				allJobs = append(allJobs, job)
+			}
 		}
+		delete(jobsByNodeName, node.Name)
 	}
 
-	// Delete old jobs
-	for _, job := range jobToDelete {
-		// TODO maybe wait that the job is finished (success or failure) before deleting, need to define policy configuration
-		// Or maybe wait that the job is finished before creating the new job
+	// if the map still contains Jobs it means Nodes have been removed or the node selector was updated
+	// so delete those jobs
+	for node, job := range jobsByNodeName {
+		glog.V(6).Infof("Node %s doesn't match anymore the nodeSelector for daemonsetjob %s/%s", node, daemonsetjob.Namespace, daemonsetjob.Name)
 		err = d.JobControl.DeleteJob(job.Namespace, job.Name, job)
 		if err != nil {
 			errs = append(errs, err)
@@ -381,27 +402,36 @@ func (d *DaemonSetJobController) manageDaemonSetJob(daemonsetjob *dapi.DaemonSet
 
 func getJobsStatus(jobs []*batch.Job) (activeJobs, succeededJobs, failedJobs int32) {
 	for _, job := range jobs {
-		var hasFailed bool
-		var hasComplete bool
-		for _, condition := range job.Status.Conditions {
-			if condition.Type == batch.JobFailed && condition.Status == apiv1.ConditionTrue {
-				hasFailed = true
-				continue
-			}
-			if condition.Type == batch.JobComplete && condition.Status == apiv1.ConditionTrue {
-				hasComplete = true
-				continue
-			}
-		}
-		if hasFailed {
+		switch getJobStatus(job) {
+		case failedJobStatus:
 			failedJobs++
-		} else if hasComplete {
+		case succeededJobStatus:
 			succeededJobs++
-		} else {
+		case activeJobStatus:
 			activeJobs++
 		}
 	}
 	return
+}
+
+type jobStatus string
+
+const (
+	activeJobStatus    jobStatus = "active"
+	succeededJobStatus jobStatus = "successed"
+	failedJobStatus    jobStatus = "failed"
+)
+
+func getJobStatus(job *batch.Job) jobStatus {
+	for _, condition := range job.Status.Conditions {
+		if condition.Type == batch.JobFailed && condition.Status == apiv1.ConditionTrue {
+			return failedJobStatus
+		}
+		if condition.Type == batch.JobComplete && condition.Status == apiv1.ConditionTrue {
+			return succeededJobStatus
+		}
+	}
+	return activeJobStatus
 }
 
 func (d *DaemonSetJobController) onAddDaemonSetJob(obj interface{}) {

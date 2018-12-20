@@ -35,6 +35,8 @@ type JobControlInterface interface {
 	CreateJobFromDaemonSetJob(namespace string, template *batchv2.JobTemplateSpec, daemonsetjob *dapi.DaemonSetJob, nodeName string) (*batch.Job, error)
 	// DeleteJob
 	DeleteJob(namespace, name string, object runtime.Object) error
+	// UpdateJobFromDaemonSetJob
+	UpdateJobFromDaemonSetJob(oldJob *batch.Job, template *batchv2.JobTemplateSpec, daemonsetjob *dapi.DaemonSetJob, nodeName string) (*batch.Job, error)
 }
 
 // WorkflowJobControl implements JobControlInterface
@@ -84,6 +86,34 @@ func (w WorkflowJobControl) CreateJobFromDaemonSetJob(namespace string, template
 	return job, nil
 }
 
+// UpdateJobFromDaemonSetJob updates a Job According to a specific JobTemplateSpec
+func (w WorkflowJobControl) UpdateJobFromDaemonSetJob(oldJob *batch.Job, template *batchv2.JobTemplateSpec, daemonsetjob *dapi.DaemonSetJob, nodeName string) (*batch.Job, error) {
+	labels, err := getJobLabelsSetFromDaemonSetJob(daemonsetjob, template)
+	if err != nil {
+		return nil, err
+	}
+	templateCopy := template.DeepCopy()
+	templateCopy.Spec.Template.Spec.NodeName = nodeName
+
+	// Generate a MD5 representing the JobTemplateSpec send
+	hash, err := generateMD5JobSpec(&daemonsetjob.Spec.JobTemplate.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("unable to generates the JobSpec MD5, %v", err)
+	}
+	objMeta := daemonsetjob.ObjectMeta.DeepCopy()
+	if objMeta.Annotations == nil {
+		objMeta.Annotations = map[string]string{}
+	}
+	objMeta.Annotations[DaemonSetJobMD5AnnotationKey] = hash
+
+	job, err := w.UpdateJob(oldJob, objMeta, templateCopy, &labels)
+	if err != nil {
+		return nil, err
+	}
+
+	return job, nil
+}
+
 // CreateJob creates a Job According to a specific JobTemplateSpec
 func (w WorkflowJobControl) CreateJob(namespace string, subName string, obj *metav1.ObjectMeta, template *batchv2.JobTemplateSpec, labelsset *labels.Set, owner *metav1.OwnerReference) (*batch.Job, error) {
 	job, err := initJob(template, obj, subName, labelsset, owner)
@@ -91,6 +121,21 @@ func (w WorkflowJobControl) CreateJob(namespace string, subName string, obj *met
 		return nil, fmt.Errorf("cannot create job: %v", err)
 	}
 	return w.KubeClient.BatchV1().Jobs(namespace).Create(job)
+}
+
+// UpdateJob updates a Job According to a specific JobTemplateSpec
+func (w WorkflowJobControl) UpdateJob(oldJob *batch.Job, obj *metav1.ObjectMeta, template *batchv2.JobTemplateSpec, labelsset *labels.Set) (*batch.Job, error) {
+	newJob := oldJob.DeepCopy()
+	{
+		desiredAnnotations, err := getJobAnnotationsSet(obj, template)
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialize Job %s/%s: %v", obj.Namespace, newJob.Name, err)
+		}
+		newJob.Spec = *template.Spec.DeepCopy()
+		newJob.Annotations = desiredAnnotations
+		newJob.Labels = *labelsset
+	}
+	return w.KubeClient.BatchV1().Jobs(newJob.Namespace).Update(newJob)
 }
 
 // DeleteJob deletes a Job
@@ -142,6 +187,11 @@ func (f *FakeJobControl) CreateJobFromWorkflow(namespace string, template *batch
 
 // CreateJobFromDaemonSetJob mocks job creation
 func (f *FakeJobControl) CreateJobFromDaemonSetJob(namespace string, template *batchv2.JobTemplateSpec, workflow *dapi.DaemonSetJob, nodeName string) (*batch.Job, error) {
+	return nil, nil
+}
+
+// UpdateJobFromDaemonSetJob mocks job creation
+func (f *FakeJobControl) UpdateJobFromDaemonSetJob(oldJob *batch.Job, template *batchv2.JobTemplateSpec, workflow *dapi.DaemonSetJob, nodeName string) (*batch.Job, error) {
 	return nil, nil
 }
 
