@@ -111,7 +111,7 @@ func inferrWorkflowLabelSelectorForJobs(workflow *wapi.Workflow) labels.Selector
 	return labels.SelectorFromSet(set)
 }
 
-func buildOwnerReference(obj *metav1.ObjectMeta) metav1.OwnerReference {
+func buildOwnerReferenceForWorkflow(obj *metav1.ObjectMeta) metav1.OwnerReference {
 	controllerRef := metav1.OwnerReference{
 		APIVersion: wapi.SchemeGroupVersion.String(),
 		Kind:       wapi.ResourceKind,
@@ -119,7 +119,17 @@ func buildOwnerReference(obj *metav1.ObjectMeta) metav1.OwnerReference {
 		UID:        obj.UID,
 		Controller: boolPtr(true),
 	}
+	return controllerRef
+}
 
+func buildOwnerReferenceForDaemonsetJob(obj *metav1.ObjectMeta) metav1.OwnerReference {
+	controllerRef := metav1.OwnerReference{
+		APIVersion: dapi.SchemeGroupVersion.String(),
+		Kind:       dapi.ResourceKind,
+		Name:       obj.Name,
+		UID:        obj.UID,
+		Controller: boolPtr(true),
+	}
 	return controllerRef
 }
 

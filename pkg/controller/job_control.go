@@ -51,7 +51,8 @@ func (w WorkflowJobControl) CreateJobFromWorkflow(namespace string, template *ba
 	if err != nil {
 		return nil, err
 	}
-	return w.CreateJob(namespace, stepName, &workflow.ObjectMeta, template, &labels)
+	owner := buildOwnerReferenceForDaemonsetJob(&workflow.ObjectMeta)
+	return w.CreateJob(namespace, stepName, &workflow.ObjectMeta, template, &labels, &owner)
 }
 
 // CreateJobFromDaemonSetJob creates a Job According to a specific JobTemplateSpec
@@ -74,7 +75,8 @@ func (w WorkflowJobControl) CreateJobFromDaemonSetJob(namespace string, template
 	}
 	objMeta.Annotations[DaemonSetJobMD5AnnotationKey] = hash
 
-	job, err := w.CreateJob(namespace, nodeName, objMeta, templateCopy, &labels)
+	owner := buildOwnerReferenceForDaemonsetJob(&daemonsetjob.ObjectMeta)
+	job, err := w.CreateJob(namespace, nodeName, objMeta, templateCopy, &labels, &owner)
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +85,8 @@ func (w WorkflowJobControl) CreateJobFromDaemonSetJob(namespace string, template
 }
 
 // CreateJob creates a Job According to a specific JobTemplateSpec
-func (w WorkflowJobControl) CreateJob(namespace string, subName string, obj *metav1.ObjectMeta, template *batchv2.JobTemplateSpec, labelsset *labels.Set) (*batch.Job, error) {
-	job, err := initJob(template, obj, subName, labelsset, nil)
+func (w WorkflowJobControl) CreateJob(namespace string, subName string, obj *metav1.ObjectMeta, template *batchv2.JobTemplateSpec, labelsset *labels.Set, owner *metav1.OwnerReference) (*batch.Job, error) {
+	job, err := initJob(template, obj, subName, labelsset, owner)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create job: %v", err)
 	}
@@ -123,7 +125,7 @@ func initJob(template *batchv2.JobTemplateSpec, obj *metav1.ObjectMeta, subName 
 		},
 	}
 
-	job.ObjectMeta.OwnerReferences = append(job.ObjectMeta.OwnerReferences, buildOwnerReference(obj))
+	job.ObjectMeta.OwnerReferences = append(job.ObjectMeta.OwnerReferences, *owner)
 	job.Spec = *template.Spec.DeepCopy()
 
 	return job, nil
