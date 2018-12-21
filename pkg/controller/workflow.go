@@ -49,8 +49,8 @@ const (
 
 // WorkflowController represents the Workflow controller
 type WorkflowController struct {
-	WorkflowClient wclientset.Interface
-	KubeClient     clientset.Interface
+	Client     wclientset.Interface
+	KubeClient clientset.Interface
 
 	WorkflowLister wlisters.WorkflowLister
 	WorkflowSynced cache.InformerSynced
@@ -72,7 +72,7 @@ type WorkflowController struct {
 
 // NewWorkflowController creates and initializes the WorkflowController instance
 func NewWorkflowController(
-	workflowClient wclientset.Interface,
+	client wclientset.Interface,
 	kubeClient clientset.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	workflowInformerFactory winformers.SharedInformerFactory) *WorkflowController {
@@ -85,7 +85,7 @@ func NewWorkflowController(
 	workflowInformer := workflowInformerFactory.Workflow().V1().Workflows()
 
 	wc := &WorkflowController{
-		WorkflowClient: workflowClient,
+		Client:         client,
 		KubeClient:     kubeClient,
 		WorkflowLister: workflowInformer.Lister(),
 		WorkflowSynced: workflowInformer.Informer().HasSynced,
@@ -343,14 +343,14 @@ func (w *WorkflowController) onDeleteWorkflow(obj interface{}) {
 }
 
 func (w *WorkflowController) updateWorkflow(wfl *wapi.Workflow) error {
-	if _, err := w.WorkflowClient.WorkflowV1().Workflows(wfl.Namespace).Update(wfl); err != nil {
+	if _, err := w.Client.WorkflowV1().Workflows(wfl.Namespace).Update(wfl); err != nil {
 		glog.V(6).Infof("Workflow %s/%s updated", wfl.Namespace, wfl.Name)
 	}
 	return nil
 }
 
 func (w *WorkflowController) deleteWorkflow(namespace, name string) error {
-	if err := w.WorkflowClient.WorkflowV1().Workflows(namespace).Delete(name, nil); err != nil {
+	if err := w.Client.WorkflowV1().Workflows(namespace).Delete(name, nil); err != nil {
 		return fmt.Errorf("unable to delete Workflow %s/%s: %v", namespace, name, err)
 	}
 

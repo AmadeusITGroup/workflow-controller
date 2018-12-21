@@ -39,7 +39,7 @@ func (f *Framework) kubeClient() (*clientset.Clientset, error) {
 	return clientset.NewForConfig(f.KubeConfig)
 }
 
-func (f *Framework) workflowClient() (versioned.Interface, error) {
+func (f *Framework) client() (versioned.Interface, error) {
 	c, err := client.NewWorkflowClient(f.KubeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create workflow client:%v", err)
