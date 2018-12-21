@@ -346,10 +346,8 @@ func (d *DaemonSetJobController) manageDaemonSetJob(daemonsetjob *dapi.DaemonSet
 						errs = append(errs, err)
 					}
 				case activeJobStatus:
-					job, err = d.JobControl.UpdateJobFromDaemonSetJob(job, daemonsetjob.Spec.JobTemplate, daemonsetjob, node.Name)
-					if err != nil {
-						errs = append(errs, err)
-					}
+					// wait that the job finished or failed before deleting it.
+					continue
 				}
 				daemonsetjobToBeUpdated = true
 			} else {
