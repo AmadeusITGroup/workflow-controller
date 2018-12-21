@@ -44,57 +44,57 @@ var _ = Describe("DaemonSetJob CRUD", func() {
 	})
 
 	It("should create then update a daemonsetjob", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		client, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myDaemonSetJob := framework.NewDaemonSetJob(workflow.GroupName, "v1", "daemonsetjob1", ns, nil)
 		defer func() {
-			deleteDaemonSetJob(workflowClient, myDaemonSetJob)
+			deleteDaemonSetJob(client, myDaemonSetJob)
 			deleteAllJobsFromDaemonSetJob(kubeClient, myDaemonSetJob)
 		}()
 
-		Eventually(framework.HOCreateDaemonSetJob(workflowClient, myDaemonSetJob), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateDaemonSetJob(client, myDaemonSetJob), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOIsDaemonSetJobStarted(workflowClient, myDaemonSetJob), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOIsDaemonSetJobStarted(client, myDaemonSetJob), "40s", "5s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOUpdateDaemonSetJob(workflowClient, myDaemonSetJob), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOUpdateDaemonSetJob(client, myDaemonSetJob), "5s", "1s").ShouldNot(HaveOccurred())
 
 		Eventually(framework.HOIsDaemonSetJobJobsStarted(kubeClient, myDaemonSetJob), "60s", "5s").ShouldNot(HaveOccurred())
 	})
 
 	It("should run to finish a daemonsetjob", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		client, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myDaemonSetJob := framework.NewDaemonSetJob(workflow.GroupName, "v1", "daemonsetjob2", ns, nil)
 		defer func() {
-			deleteDaemonSetJob(workflowClient, myDaemonSetJob)
+			deleteDaemonSetJob(client, myDaemonSetJob)
 			deleteAllJobsFromDaemonSetJob(kubeClient, myDaemonSetJob)
 		}()
-		Eventually(framework.HOCreateDaemonSetJob(workflowClient, myDaemonSetJob), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateDaemonSetJob(client, myDaemonSetJob), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOIsDaemonSetJobFinished(workflowClient, myDaemonSetJob), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOIsDaemonSetJobFinished(client, myDaemonSetJob), "40s", "5s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOCheckAllDaemonSetJobJobsFinished(workflowClient, myDaemonSetJob), "60s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCheckAllDaemonSetJobJobsFinished(client, myDaemonSetJob), "60s", "5s").ShouldNot(HaveOccurred())
 	})
 
 	It("should not start job since NodeSelector dont match", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		client, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myDaemonSetJob := framework.NewDaemonSetJob(workflow.GroupName, "v1", "daemonsetjob3", ns, map[string]string{"sdfdsfsffsd": "fsdfsdfsdfds"})
 		defer func() {
-			deleteDaemonSetJob(workflowClient, myDaemonSetJob)
+			deleteDaemonSetJob(client, myDaemonSetJob)
 			deleteAllJobsFromDaemonSetJob(kubeClient, myDaemonSetJob)
 		}()
-		Eventually(framework.HOCreateDaemonSetJob(workflowClient, myDaemonSetJob), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateDaemonSetJob(client, myDaemonSetJob), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOIsDaemonSetJobStarted(workflowClient, myDaemonSetJob), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOIsDaemonSetJobStarted(client, myDaemonSetJob), "40s", "5s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOCheckZeroDaemonSetJobJobsWasCreated(workflowClient, myDaemonSetJob), "10s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCheckZeroDaemonSetJobJobsWasCreated(client, myDaemonSetJob), "10s", "5s").ShouldNot(HaveOccurred())
 	})
 
 })
 
-func deleteDaemonSetJob(workflowClient versioned.Interface, daemonsetjob *dapi.DaemonSetJob) {
-	workflowClient.DaemonsetjobV1().DaemonSetJobs(daemonsetjob.Namespace).Delete(daemonsetjob.Name, nil)
+func deleteDaemonSetJob(client versioned.Interface, daemonsetjob *dapi.DaemonSetJob) {
+	client.DaemonsetjobV1().DaemonSetJobs(daemonsetjob.Namespace).Delete(daemonsetjob.Name, nil)
 	By("DaemonSetJob deleted")
 }
 

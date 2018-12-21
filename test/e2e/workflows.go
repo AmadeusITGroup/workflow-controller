@@ -19,8 +19,8 @@ import (
 	"github.com/amadeusitgroup/workflow-controller/test/e2e/framework"
 )
 
-func deleteWorkflow(workflowClient versioned.Interface, workflow *wapi.Workflow) {
-	workflowClient.WorkflowV1().Workflows(workflow.Namespace).Delete(workflow.Name, nil)
+func deleteWorkflow(client versioned.Interface, workflow *wapi.Workflow) {
+	client.WorkflowV1().Workflows(workflow.Namespace).Delete(workflow.Name, nil)
 	By("Workflow deleted")
 }
 
@@ -46,31 +46,31 @@ func deleteAllJobsFromWorkflow(kubeClient clientset.Interface, workflow *wapi.Wo
 
 var _ = Describe("Workflow CRUD", func() {
 	It("should create a workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		client, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "workflow1", ns, nil)
 		defer func() {
-			deleteWorkflow(workflowClient, myWorkflow)
+			deleteWorkflow(client, myWorkflow)
 			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 
-		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateWorkflow(client, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOIsWorkflowStarted(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOIsWorkflowStarted(client, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 	})
 
 	It("should default workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		client, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "workflow2", ns, nil)
 		defer func() {
-			deleteWorkflow(workflowClient, myWorkflow)
+			deleteWorkflow(client, myWorkflow)
 			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
-		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateWorkflow(client, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
 		Eventually(func() error {
-			workflows, err := workflowClient.WorkflowV1().Workflows(ns).List(metav1.ListOptions{})
+			workflows, err := client.WorkflowV1().Workflows(ns).List(metav1.ListOptions{})
 			if err != nil {
 				framework.Logf("Cannot list workflows:%v", err)
 				return err
@@ -87,36 +87,36 @@ var _ = Describe("Workflow CRUD", func() {
 	})
 
 	It("should run to finish a workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		client, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "workflow3", ns, nil)
 		defer func() {
-			deleteWorkflow(workflowClient, myWorkflow)
+			deleteWorkflow(client, myWorkflow)
 			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
-		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateWorkflow(client, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "60s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOIsWorkflowFinished(client, myWorkflow, ns), "60s", "5s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOCheckAllStepsFinished(workflowClient, myWorkflow, ns), "60s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCheckAllStepsFinished(client, myWorkflow, ns), "60s", "5s").ShouldNot(HaveOccurred())
 	})
 
 	It("should be able to update workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		client, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflowWithThreeSteps(workflow.GroupName, "v1", "workflow3", ns)
 		defer func() {
-			deleteWorkflow(workflowClient, myWorkflow)
+			deleteWorkflow(client, myWorkflow)
 			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 
-		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateWorkflow(client, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOIsWorkflowStarted(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOIsWorkflowStarted(client, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 
 		// Edit Workflow adding a step "four"
 		Eventually(func() error {
-			workflows, err := workflowClient.WorkflowV1().Workflows(ns).List(metav1.ListOptions{})
+			workflows, err := client.WorkflowV1().Workflows(ns).List(metav1.ListOptions{})
 			if err != nil {
 				framework.Logf("Cannot list workflows:%v", err)
 				return err
@@ -127,36 +127,36 @@ var _ = Describe("Workflow CRUD", func() {
 			workflow := workflows.Items[0].DeepCopy()
 			step4 := framework.NewWorkflowStep("four", []string{"three"})
 			workflow.Spec.Steps = append(workflow.Spec.Steps, *step4)
-			if _, err = workflowClient.WorkflowV1().Workflows(ns).Update(workflow); err != nil {
+			if _, err = client.WorkflowV1().Workflows(ns).Update(workflow); err != nil {
 				return fmt.Errorf("unable to update workflow %s/%s: %v", workflow.Namespace, workflow.Name, err)
 			}
 			framework.Logf("workflow update")
 			return nil
 		}, "40s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOIsWorkflowFinished(client, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOCheckAllStepsFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCheckAllStepsFinished(client, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 
 	})
 
 	It("should exceed deadline", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		client, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "deadlineworkflow", ns, nil)
 		threeSecs := int64(3)
 		myWorkflow.Spec.ActiveDeadlineSeconds = &threeSecs // Set deadline
 		defer func() {
-			deleteWorkflow(workflowClient, myWorkflow)
+			deleteWorkflow(client, myWorkflow)
 			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 
-		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateWorkflow(client, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOIsWorkflowFinished(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOIsWorkflowFinished(client, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 
 		Eventually(func() error {
-			workflows, err := workflowClient.WorkflowV1().Workflows(ns).List(metav1.ListOptions{})
+			workflows, err := client.WorkflowV1().Workflows(ns).List(metav1.ListOptions{})
 			if err != nil {
 				framework.Logf("Cannot list workflows:%v", err)
 				return err
@@ -173,22 +173,22 @@ var _ = Describe("Workflow CRUD", func() {
 	})
 
 	It("should remove an invalid workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		client, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflowWithLoop(workflow.GroupName, "v1", "loopworkflow", ns)
 
 		defer func() {
-			deleteWorkflow(workflowClient, myWorkflow)
+			deleteWorkflow(client, myWorkflow)
 			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 
-		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateWorkflow(client, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HONoWorkflowsShouldRemains(workflowClient, ns), "40s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HONoWorkflowsShouldRemains(client, ns), "40s", "1s").ShouldNot(HaveOccurred())
 	})
 
 	It("should remove workflow created non empty status", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		client, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "nonemptystatus", ns, nil)
 		now := metav1.Now()
@@ -196,36 +196,36 @@ var _ = Describe("Workflow CRUD", func() {
 			StartTime: &now,
 		}
 		defer func() {
-			deleteWorkflow(workflowClient, myWorkflow)
+			deleteWorkflow(client, myWorkflow)
 			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
-		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateWorkflow(client, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HONoWorkflowsShouldRemains(workflowClient, ns), "40s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HONoWorkflowsShouldRemains(client, ns), "40s", "1s").ShouldNot(HaveOccurred())
 	})
 
 })
 
 var _ = Describe("Workflow Garbage Collection", func() {
 	It("should delete all jobs for deleted Workflow", func() {
-		workflowClient, kubeClient := framework.BuildAndSetClients()
+		client, kubeClient := framework.BuildAndSetClients()
 		ns := api.NamespaceDefault
 
 		myWorkflow := framework.NewWorkflowWithThreeSteps(workflow.GroupName, "v1", "workflow-long", ns)
 		defer func() {
-			deleteWorkflow(workflowClient, myWorkflow)
+			deleteWorkflow(client, myWorkflow)
 			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 
-		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCreateWorkflow(client, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
-		Eventually(framework.HOIsWorkflowStarted(workflowClient, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOIsWorkflowStarted(client, myWorkflow, ns), "40s", "5s").ShouldNot(HaveOccurred())
 
 		// as soon "one" finished...
-		Eventually(framework.HOCheckStepFinished(workflowClient, myWorkflow, "one", ns), "40s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HOCheckStepFinished(client, myWorkflow, "one", ns), "40s", "1s").ShouldNot(HaveOccurred())
 
 		// Delete Workflow
-		Eventually(framework.HODeleteWorkflow(workflowClient, myWorkflow, ns), "40s", "1s").ShouldNot(HaveOccurred())
+		Eventually(framework.HODeleteWorkflow(client, myWorkflow, ns), "40s", "1s").ShouldNot(HaveOccurred())
 
 		// Check all Jobs have been deleted
 		selector := controller.WorkflowLabelKey + "=workflow-long"

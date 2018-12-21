@@ -49,8 +49,8 @@ const (
 
 // DaemonSetJobController represents the DaemonSetJob controller
 type DaemonSetJobController struct {
-	DaemonSetJobClient dclientset.Interface
-	KubeClient         clientset.Interface
+	Client     dclientset.Interface
+	KubeClient clientset.Interface
 
 	DaemonSetJobLister dlisters.DaemonSetJobLister
 	DaemonSetJobSynced cache.InformerSynced
@@ -75,7 +75,7 @@ type DaemonSetJobController struct {
 
 // NewDaemonSetJobController creates and initializes the DaemonSetJobController instance
 func NewDaemonSetJobController(
-	daemonsetjobClient dclientset.Interface,
+	client dclientset.Interface,
 	kubeClient clientset.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	deamonsetJobInformerFactory dinformers.SharedInformerFactory) *DaemonSetJobController {
@@ -89,7 +89,7 @@ func NewDaemonSetJobController(
 	daemonsetjobInformer := deamonsetJobInformerFactory.Daemonsetjob().V1().DaemonSetJobs()
 
 	dj := &DaemonSetJobController{
-		DaemonSetJobClient: daemonsetjobClient,
+		Client:             client,
 		KubeClient:         kubeClient,
 		DaemonSetJobLister: daemonsetjobInformer.Lister(),
 		DaemonSetJobSynced: daemonsetjobInformer.Informer().HasSynced,
@@ -479,14 +479,14 @@ func (d *DaemonSetJobController) onDeleteDaemonSetJob(obj interface{}) {
 }
 
 func (d *DaemonSetJobController) updateDaemonSetJob(dj *dapi.DaemonSetJob) error {
-	if _, err := d.DaemonSetJobClient.DaemonsetjobV1().DaemonSetJobs(dj.Namespace).Update(dj); err != nil {
+	if _, err := d.Client.DaemonsetjobV1().DaemonSetJobs(dj.Namespace).Update(dj); err != nil {
 		glog.V(6).Infof("DaemonSetJob %s/%s updated", dj.Namespace, dj.Name)
 	}
 	return nil
 }
 
 func (d *DaemonSetJobController) deleteDaemonSetJob(namespace, name string) error {
-	if err := d.DaemonSetJobClient.DaemonsetjobV1().DaemonSetJobs(namespace).Delete(name, nil); err != nil {
+	if err := d.Client.DaemonsetjobV1().DaemonSetJobs(namespace).Delete(name, nil); err != nil {
 		return fmt.Errorf("unable to delete DaemonSetJob %s/%s: %v", namespace, name, err)
 	}
 

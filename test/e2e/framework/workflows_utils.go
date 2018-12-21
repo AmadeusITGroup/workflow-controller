@@ -37,10 +37,10 @@ func BuildAndSetClients() (versioned.Interface, *clientset.Clientset) {
 	Ω(err).ShouldNot(HaveOccurred())
 	Ω(kubeClient).ShouldNot(BeNil())
 	Logf("Check wether Workflow resource is registered...")
-	workflowClient, err := f.workflowClient()
+	client, err := f.client()
 	Ω(err).ShouldNot(HaveOccurred())
-	Ω(workflowClient).ShouldNot(BeNil())
-	return workflowClient, kubeClient
+	Ω(client).ShouldNot(BeNil())
+	return client, kubeClient
 }
 
 func NewWorkflowStep(name string, dependencies []string) *wapi.WorkflowStep {
@@ -171,7 +171,7 @@ func HOIsWorkflowStarted(workflowClient versioned.Interface, workflow *wapi.Work
 			return nil
 		}
 		Logf("Workflow %s/%s not updated", w.Namespace, w.Name)
-		return fmt.Errorf("workflow %s not updated", w.Namespace, w.Name)
+		return fmt.Errorf("workflow %s/%s not updated", w.Namespace, w.Name)
 	}
 }
 

@@ -102,29 +102,21 @@ func NewWorkflowControllerApp(c *Config) *WorkflowController {
 		}
 	}
 
-	workflowClient, err := wclient.NewWorkflowClient(kubeConfig)
+	client, err := wclient.NewWorkflowClient(kubeConfig)
 	if err != nil {
-		glog.Fatalf("Unable to initialize a Workflow client:%v", err)
+		glog.Fatalf("Unable to initialize a client:%v", err)
 	}
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 
-	workflowInformerFactory := winformers.NewSharedInformerFactory(workflowClient, time.Second*30)
-	workflowCtrl := controller.NewWorkflowController(workflowClient, kubeClient, kubeInformerFactory, workflowInformerFactory)
+	workflowInformerFactory := winformers.NewSharedInformerFactory(client, time.Second*30)
+	workflowCtrl := controller.NewWorkflowController(client, kubeClient, kubeInformerFactory, workflowInformerFactory)
 
-	cronWorkflowClient, err := wclient.NewCronWorkflowClient(kubeConfig)
-	if err != nil {
-		glog.Fatalf("Unable to initialize CronWorkflow client: %v", err)
-	}
-	cronWorkflowInformerFactory := winformers.NewSharedInformerFactory(cronWorkflowClient, time.Second*30)
-	cronWorkflowCtrl := controller.NewCronWorkflowController(cronWorkflowClient, kubeClient)
+	cronWorkflowInformerFactory := winformers.NewSharedInformerFactory(client, time.Second*30)
+	cronWorkflowCtrl := controller.NewCronWorkflowController(client, kubeClient)
 
-	daemonSetJobClient, err := wclient.NewDaemonSetJobClient(kubeConfig)
-	if err != nil {
-		glog.Fatalf("Unable to initialize DaemonSetJob client: %v", err)
-	}
-	daemonSetJobInformerFactory := winformers.NewSharedInformerFactory(daemonSetJobClient, time.Second*30)
-	daemonSetJobCtrl := controller.NewDaemonSetJobController(daemonSetJobClient, kubeClient, kubeInformerFactory, daemonSetJobInformerFactory)
+	daemonSetJobInformerFactory := winformers.NewSharedInformerFactory(client, time.Second*30)
+	daemonSetJobCtrl := controller.NewDaemonSetJobController(client, kubeClient, kubeInformerFactory, daemonSetJobInformerFactory)
 
 	// configure readiness and liveness probes
 	health := healthcheck.NewHandler()
@@ -136,14 +128,14 @@ func NewWorkflowControllerApp(c *Config) *WorkflowController {
 		kubeInformerFactory:     kubeInformerFactory,
 		workflowInformerFactory: workflowInformerFactory,
 		workflowController:      workflowCtrl,
-		workflowGC:              garbagecollector.NewGarbageCollector(workflowClient, kubeClient, workflowInformerFactory),
+		workflowGC:              garbagecollector.NewGarbageCollector(client, kubeClient, workflowInformerFactory),
 
 		cronWorkflowInfomerFactory: cronWorkflowInformerFactory,
 		cronWorkflowController:     cronWorkflowCtrl,
 
 		daemonSetJobInfomerFactory: daemonSetJobInformerFactory,
 		daemonSetJobController:     daemonSetJobCtrl,
-		daemonSetJobGC:             garbagecollector.NewDaemonSetJobGarbageCollector(daemonSetJobClient, kubeClient, daemonSetJobInformerFactory),
+		daemonSetJobGC:             garbagecollector.NewDaemonSetJobGarbageCollector(client, kubeClient, daemonSetJobInformerFactory),
 
 		httpServer: &http.Server{Addr: c.ListenHTTPAddr, Handler: health},
 	}

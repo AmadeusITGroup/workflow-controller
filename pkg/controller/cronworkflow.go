@@ -36,9 +36,9 @@ type CronWorkflowControllerConfig struct {
 
 // CronWorkflowController represents the Workflow controller
 type CronWorkflowController struct {
-	CronWorkflowClient wclientset.Interface
-	KubeClient         clientset.Interface
-	queue              workqueue.RateLimitingInterface // Workflows to be synced
+	Client     wclientset.Interface
+	KubeClient clientset.Interface
+	queue      workqueue.RateLimitingInterface // Workflows to be synced
 
 	CronWorkflowLister cwlisters.CronWorkflowLister
 	CronWorkflowSynced cache.InformerSynced
@@ -55,7 +55,7 @@ type CronWorkflowController struct {
 
 // NewCronWorkflowController creates and initializes the CronWorkflowController instance
 func NewCronWorkflowController(
-	cronWorkflowClient wclientset.Interface,
+	client wclientset.Interface,
 	kubeClient clientset.Interface) *CronWorkflowController {
 
 	eventBroadcaster := record.NewBroadcaster()
@@ -63,8 +63,8 @@ func NewCronWorkflowController(
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.Core().RESTClient()).Events("")})
 
 	wc := &CronWorkflowController{
-		CronWorkflowClient: cronWorkflowClient,
-		KubeClient:         kubeClient,
+		Client:     client,
+		KubeClient: kubeClient,
 
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "cronworkflow"),
 		config: CronWorkflowControllerConfig{
@@ -251,7 +251,7 @@ func (w *CronWorkflowController) onDeleteCronWorkflow(obj interface{}) {
 }
 
 func (w *CronWorkflowController) updateCronWorkflow(cwfl *cwapi.CronWorkflow) error {
-	if _, err := w.CronWorkflowClient.CronworkflowV1().CronWorkflows(cwfl.Namespace).Update(cwfl); err != nil {
+	if _, err := w.Client.CronworkflowV1().CronWorkflows(cwfl.Namespace).Update(cwfl); err != nil {
 		glog.V(6).Infof("Workflow %s/%s updated", cwfl.Namespace, cwfl.Name)
 		return err
 	}
@@ -259,7 +259,7 @@ func (w *CronWorkflowController) updateCronWorkflow(cwfl *cwapi.CronWorkflow) er
 }
 
 func (w *CronWorkflowController) deleteCronWorkflow(namespace, name string) error {
-	if err := w.CronWorkflowClient.WorkflowV1().Workflows(namespace).Delete(name, nil); err != nil {
+	if err := w.Client.WorkflowV1().Workflows(namespace).Delete(name, nil); err != nil {
 		return fmt.Errorf("unable to delete Workflow %s/%s: %v", namespace, name, err)
 	}
 
