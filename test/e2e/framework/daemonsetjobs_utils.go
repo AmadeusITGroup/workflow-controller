@@ -97,11 +97,6 @@ func HOUpdateDaemonSetJob(workflowClient versioned.Interface, daemonsetjob *daem
 		}
 		// add a volume to update the JobSpec.
 		d.Spec.JobTemplate.Spec.Template.Spec.Volumes = append(d.Spec.JobTemplate.Spec.Template.Spec.Volumes, api.Volume{Name: "emptyvol", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}})
-		// add label to easily the new job version.
-		if d.Spec.JobTemplate.Labels == nil {
-			d.Spec.JobTemplate.Labels = map[string]string{}
-		}
-		d.Spec.JobTemplate.Labels["test-update"] = "true"
 
 		if _, err := workflowClient.DaemonsetjobV1().DaemonSetJobs(daemonsetjob.Namespace).Update(d); err != nil {
 			Logf("cannot update DaemonSetJob %s/%s: %v", d.Namespace, d.Name, err)
@@ -129,11 +124,6 @@ func HOIsDaemonSetJobStarted(workflowClient versioned.Interface, daemonsetjob *d
 	}
 }
 
-func displayJob(job *batch.Job) error {
-	fmt.Printf("Job: %#v\n", job.GetObjectMeta())
-	return nil
-}
-
 // HOIsDaemonSetJobJobsStarted is an higher order func that returns the func that checks whether Jobs linked to a DaemonSetJob are started
 func HOIsDaemonSetJobJobsStarted(kubeclient clientset.Interface, daemonsetjob *daemonsetjobv1.DaemonSetJob) func() error {
 	return func() error {
@@ -146,14 +136,10 @@ func HOIsDaemonSetJobJobsStarted(kubeclient clientset.Interface, daemonsetjob *d
 			return err
 		}
 		if len(jobs.Items) != 1 {
-			for i := range jobs.Items {
-				displayJob(&jobs.Items[i])
-			}
 			return fmt.Errorf("Expected only 1 Job got %d, %s/%s: label selector: %q", len(jobs.Items), daemonsetjob.Namespace, daemonsetjob.Name, labelSelector)
 		}
 		if jobs.Items[0].Status.StartTime != nil {
 			Logf("Job started")
-			displayJob(&jobs.Items[0])
 			return nil
 		}
 		Logf("Job associated to %s/%s not created", daemonsetjob.Namespace, daemonsetjob.Name)
