@@ -6,7 +6,6 @@ import (
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 
 	batch "k8s.io/api/batch/v1"
 	batchv2 "k8s.io/api/batch/v2alpha1"
@@ -130,24 +129,34 @@ func HOIsDaemonSetJobStarted(workflowClient versioned.Interface, daemonsetjob *d
 	}
 }
 
+func displayJob(job *batch.Job) error {
+	fmt.Printf("Job: %#v\n", job.GetObjectMeta())
+	return nil
+}
+
 // HOIsDaemonSetJobJobsStarted is an higher order func that returns the func that checks whether Jobs linked to a DaemonSetJob are started
 func HOIsDaemonSetJobJobsStarted(kubeclient clientset.Interface, daemonsetjob *daemonsetjobv1.DaemonSetJob) func() error {
 	return func() error {
+		labelSelector := controller.InferDaemonSetJobLabelSelectorForJobs(daemonsetjob).String()
 		jobs, err := kubeclient.BatchV1().Jobs(daemonsetjob.Namespace).List(metav1.ListOptions{
-			LabelSelector: labels.Set(daemonsetjob.Labels).AsSelector().String(),
+			LabelSelector: labelSelector,
 		})
 		if err != nil {
 			Logf("Cannot list jobs:%v", err)
 			return err
 		}
 		if len(jobs.Items) != 1 {
-			return fmt.Errorf("Expected only 1 Job got %d, %s/%s: label selector: %s", len(jobs.Items), daemonsetjob.Namespace, daemonsetjob.Name, labels.Set(daemonsetjob.Labels).AsSelector().String())
+			for i := range jobs.Items {
+				displayJob(&jobs.Items[i])
+			}
+			return fmt.Errorf("Expected only 1 Job got %d, %s/%s: label selector: %q", len(jobs.Items), daemonsetjob.Namespace, daemonsetjob.Name, labelSelector)
 		}
 		if jobs.Items[0].Status.StartTime != nil {
 			Logf("Job started")
+			displayJob(&jobs.Items[0])
 			return nil
 		}
-		Logf("Job associated to %s/%s not created", daemonsetjob.Name)
+		Logf("Job associated to %s/%s not created", daemonsetjob.Namespace, daemonsetjob.Name)
 		return fmt.Errorf("Job associated to %s/%s not created", daemonsetjob.Namespace, daemonsetjob.Name)
 	}
 }
