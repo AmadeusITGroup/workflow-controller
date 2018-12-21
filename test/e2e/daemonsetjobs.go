@@ -99,14 +99,11 @@ func deleteDaemonSetJob(workflowClient versioned.Interface, daemonsetjob *dapi.D
 }
 
 func deleteAllJobsFromDaemonSetJob(kubeClient clientset.Interface, daemonsetjob *dapi.DaemonSetJob) {
-	jobs, err := kubeClient.Batch().Jobs(daemonsetjob.Namespace).List(metav1.ListOptions{
-		LabelSelector: controller.InferDaemonSetJobLabelSelectorForJobs(daemonsetjob).String(),
-	})
+	err := kubeClient.Batch().Jobs(daemonsetjob.Namespace).DeleteCollection(controller.CascadeDeleteOptions(0), metav1.ListOptions{
+		LabelSelector: controller.InferDaemonSetJobLabelSelectorForJobs(daemonsetjob).String()})
 	if err != nil {
+		By("Problem deleting DaemonSetJob jobs")
 		return
 	}
-	for i := range jobs.Items {
-		kubeClient.Batch().Jobs(daemonsetjob.Namespace).Delete(jobs.Items[i].Name /*cascadeDeleteOptions(0)*/, nil)
-	}
-	By("Jobs delete")
+	By("DaemonSetJob jobs deleted")
 }
