@@ -5,6 +5,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	clientset "k8s.io/client-go/kubernetes"
 
 	. "github.com/onsi/ginkgo"
@@ -33,15 +34,14 @@ func cascadeDeleteOptions(gracePeriodSeconds int64) *metav1.DeleteOptions {
 	}
 }
 
-func deleteAllJobs(kubeClient clientset.Interface, workflow *wapi.Workflow) {
-	jobs, err := kubeClient.Batch().Jobs(workflow.Namespace).List(metav1.ListOptions{})
+func deleteAllJobsFromWorkflow(kubeClient clientset.Interface, workflow *wapi.Workflow) {
+	err := kubeClient.Batch().Jobs(workflow.Namespace).DeleteCollection(cascadeDeleteOptions(0), metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(workflow.Spec.Selector.MatchLabels).String()})
 	if err != nil {
+		By("Problem deleting workflow jobs")
 		return
 	}
-	for i := range jobs.Items {
-		kubeClient.Batch().Jobs(workflow.Namespace).Delete(jobs.Items[i].Name /*cascadeDeleteOptions(0)*/, nil)
-	}
-	By("Jobs delete")
+	By("Workflow jobs deleted")
 }
 
 var _ = Describe("Workflow CRUD", func() {
@@ -51,7 +51,7 @@ var _ = Describe("Workflow CRUD", func() {
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "workflow1", ns, nil)
 		defer func() {
 			deleteWorkflow(workflowClient, myWorkflow)
-			deleteAllJobs(kubeClient, myWorkflow)
+			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
@@ -65,7 +65,7 @@ var _ = Describe("Workflow CRUD", func() {
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "workflow2", ns, nil)
 		defer func() {
 			deleteWorkflow(workflowClient, myWorkflow)
-			deleteAllJobs(kubeClient, myWorkflow)
+			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
@@ -92,7 +92,7 @@ var _ = Describe("Workflow CRUD", func() {
 		myWorkflow := framework.NewWorkflow(workflow.GroupName, "v1", "workflow3", ns, nil)
 		defer func() {
 			deleteWorkflow(workflowClient, myWorkflow)
-			deleteAllJobs(kubeClient, myWorkflow)
+			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
@@ -107,7 +107,7 @@ var _ = Describe("Workflow CRUD", func() {
 		myWorkflow := framework.NewWorkflowWithThreeSteps(workflow.GroupName, "v1", "workflow3", ns)
 		defer func() {
 			deleteWorkflow(workflowClient, myWorkflow)
-			deleteAllJobs(kubeClient, myWorkflow)
+			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
@@ -148,7 +148,7 @@ var _ = Describe("Workflow CRUD", func() {
 		myWorkflow.Spec.ActiveDeadlineSeconds = &threeSecs // Set deadline
 		defer func() {
 			deleteWorkflow(workflowClient, myWorkflow)
-			deleteAllJobs(kubeClient, myWorkflow)
+			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
@@ -179,7 +179,7 @@ var _ = Describe("Workflow CRUD", func() {
 
 		defer func() {
 			deleteWorkflow(workflowClient, myWorkflow)
-			deleteAllJobs(kubeClient, myWorkflow)
+			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
@@ -197,7 +197,7 @@ var _ = Describe("Workflow CRUD", func() {
 		}
 		defer func() {
 			deleteWorkflow(workflowClient, myWorkflow)
-			deleteAllJobs(kubeClient, myWorkflow)
+			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
 
@@ -214,7 +214,7 @@ var _ = Describe("Workflow Garbage Collection", func() {
 		myWorkflow := framework.NewWorkflowWithThreeSteps(workflow.GroupName, "v1", "workflow-long", ns)
 		defer func() {
 			deleteWorkflow(workflowClient, myWorkflow)
-			deleteAllJobs(kubeClient, myWorkflow)
+			deleteAllJobsFromWorkflow(kubeClient, myWorkflow)
 		}()
 
 		Eventually(framework.HOCreateWorkflow(workflowClient, myWorkflow, ns), "5s", "1s").ShouldNot(HaveOccurred())
