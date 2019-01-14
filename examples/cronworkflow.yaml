@@ -1,0 +1,46 @@
+apiVersion: "workflow.k8s.io/v1"
+kind: CronWorkflow
+metadata:
+  name: hello-cronworkflow
+  labels:
+    workflow: hello-cronworkflow
+spec:
+  # Some fields are identical to CronJob
+  schedule: "*/5 * * * *"
+  startingDeadlineSeconds: 60
+  concurrencyPolicy: Forbid
+  suspend: false
+
+  # These fields correspond to Cronjob fields with similar names
+  successfulWorkflowsHistoryLimit: 3
+  failedWorkflowsHistoryLimit: 3
+
+  # Define the Workflow that should execute
+  workflowTemplate:
+    metadata:
+      name: hello-cronworkflow
+      labels:
+        workflow: hello-cronworkflow
+    spec:
+      metadata:
+        name: hello-cronworkflow
+      selector:
+        matchLabels:
+          workflow: nightly-batch
+      steps:
+      - name: 1-process-hello
+        jobTemplate:
+          spec:
+            template:
+              metadata:
+                name: process-hello
+                labels:
+                  workflow: hello-cronworkflow
+                  app: hello
+              spec:
+                restartPolicy: OnFailure
+                dnsPolicy: Default
+                containers:
+                  - name: step-one-wait-and-exit
+                    image: gcr.io/google-containers/busybox
+                    command: ["sh", "-c", "echo Starting on: $(date); sleep 5; echo Goodbye cruel world at: $(date)"]
