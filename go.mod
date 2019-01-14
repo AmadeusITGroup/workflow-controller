@@ -8,6 +8,7 @@ require (
 	github.com/beorn7/perks v0.0.0-20160229213445-3ac7bf7a47d1 // indirect
 	github.com/davecgh/go-spew v0.0.0-20170626231645-782f4967f2dc // indirect
 	github.com/dgrijalva/jwt-go v0.0.0-20160705203006-01aeca54ebda // indirect
+	github.com/dustin/go-humanize v1.0.0
 	github.com/emicklei/go-restful v0.0.0-20170410110728-ff4f55a20633 // indirect
 	github.com/emicklei/go-restful-swagger12 v0.0.0-20170208215640-dcef7f557305 // indirect
 	github.com/fsnotify/fsnotify v1.4.7 // indirect
