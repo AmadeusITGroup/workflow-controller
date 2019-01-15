@@ -11,6 +11,31 @@
 
 A simple Kubernetes workflow controller. TODO: add more explanations.
 
+## workflow-controller workloads
+
+### Workflow
+
+A `Workflow` represent a DAG (Directed Acyclic Graph) composed by `Job`. According to the `Workflow.Spec`, the `workflow-controller` will orchestrate the creation of Jobs from each `Workflow.Spec.Steps`, and ensure the execution timeline dependencies between the steps.
+
+You can found several `Workflow`  example [here](examples/hello_workflow/).
+
+### CronWorkflow
+
+A `CronWorkflow` creates `Workflow` on a time-based schedule. One `CronWorlflow` resource is like one line of a crontab (cron table) file. It runs a `Workflow` periodically on a given schedule, written in Cron format.
+
+You can found a `CronWorkflow`  example [here](examples/cronworflow.yaml).
+
+### DaemonSetJob
+
+A `DaemonSetJob` ensures that all (or some) Nodes run at least on a copy of a Job.
+
+Some typical uses of a DaemonSetJob are:
+
+- running a configuration task on each Node.
+- running a Job that retrieves some information on each Node.
+
+You can found a `DaemonSetJob`  example [here](examples/daemonsetjob.yaml).
+
 ## Running workflow-controller
 
 ### locally
