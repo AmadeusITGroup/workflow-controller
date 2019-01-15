@@ -31,6 +31,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/amadeusitgroup/workflow-controller/kubectl-plugin/cmd/cronworkflow"
+	"github.com/amadeusitgroup/workflow-controller/kubectl-plugin/cmd/daemonsetjob"
 	"github.com/amadeusitgroup/workflow-controller/kubectl-plugin/cmd/workflow"
 	wfclient "github.com/amadeusitgroup/workflow-controller/pkg/client"
 	wfversioned "github.com/amadeusitgroup/workflow-controller/pkg/client/clientset/versioned"
@@ -76,6 +77,7 @@ func init() {
 	// Register sub commands
 	RootCmd.AddCommand(workflow.NewCmd(kubeClient, workflowClient))
 	RootCmd.AddCommand(cronworkflow.NewCmd(kubeClient, workflowClient))
+	RootCmd.AddCommand(daemonsetjob.NewCmd(kubeClient, workflowClient))
 }
 
 // initConfig reads in config file and ENV variables if set.
